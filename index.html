@@ -1,2153 +1,1697 @@
-<!DOCTYPE html>
-<html lang="zh-TW">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>查理學生收費系統 - PWA</title>
-    <!-- Tailwind CSS -->
-    <script src="https://cdn.tailwindcss.com"></script>
-    <!-- Lucide Icons -->
-    <script src="https://unpkg.com/lucide@latest"></script>
-    <!-- Google Fonts -->
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght=300;400;500;700;900&family=Plus+Jakarta+Sans:wght=300;400;500;600;700&display=swap" rel="stylesheet">
-    
-    <!-- Dynamic Manifest Placeholder for PWA -->
-    <link rel="manifest" id="manifest-link">
-    
-    <style>
-        body {
-            font-family: 'Plus Jakarta Sans', 'Noto Sans TC', sans-serif;
-        }
-        /* Custom scrollbar for matrix */
-        .matrix-scroll::-webkit-scrollbar {
-            width: 8px;
-            height: 8px;
-        }
-        .matrix-scroll::-webkit-scrollbar-track {
-            background: #f1f5f9;
-            border-radius: 4px;
-        }
-        .matrix-scroll::-webkit-scrollbar-thumb {
-            background: #cbd5e1;
-            border-radius: 4px;
-        }
-        .matrix-scroll::-webkit-scrollbar-thumb:hover {
-            background: #94a3b8;
-        }
-    </style>
-</head>
-<body class="bg-slate-50 text-slate-800 min-h-screen flex flex-col md:flex-row">
-
-    <!-- Sidebar Navigation -->
-    <aside class="w-full md:w-64 bg-slate-900 text-slate-100 flex flex-col shrink-0 border-r border-slate-800">
-        <!-- Logo Header -->
-        <div class="p-6 border-b border-slate-800 flex items-center gap-3">
-            <div class="bg-indigo-600 p-2 rounded-xl text-white shadow-lg shadow-indigo-600/30">
-                <i data-lucide="wallet" class="w-6 h-6"></i>
-            </div>
-            <div>
-                <h1 class="font-bold text-lg leading-tight">查理學生收費系統</h1>
-                <span class="text-xs text-indigo-400 font-medium">Smart Fee Manager</span>
-            </div>
-        </div>
-
-        <!-- Navigation Links -->
-        <nav class="flex-1 p-4 space-y-1.5 overflow-y-auto">
-            <button onclick="switchTab('dashboard')" id="btn-dashboard" class="nav-btn w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all duration-200 bg-indigo-600 text-white shadow-md shadow-indigo-600/15">
-                <i data-lucide="layout-dashboard" class="w-5 h-5"></i>
-                <span>儀表板總覽</span>
-            </button>
-            <button onclick="switchTab('students')" id="btn-students" class="nav-btn w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium text-slate-400 hover:bg-slate-800 hover:text-slate-100 transition-all duration-200">
-                <i data-lucide="users" class="w-5 h-5"></i>
-                <span>學生名冊管理</span>
-            </button>
-            <button onclick="switchTab('fees')" id="btn-fees" class="nav-btn w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium text-slate-400 hover:bg-slate-800 hover:text-slate-100 transition-all duration-200">
-                <i data-lucide="receipt" class="w-5 h-5"></i>
-                <span>收費項目設定</span>
-            </button>
-            <button onclick="switchTab('matrix')" id="btn-matrix" class="nav-btn w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium text-slate-400 hover:bg-slate-800 hover:text-slate-100 transition-all duration-200">
-                <i data-lucide="grid" class="w-5 h-5"></i>
-                <span>收費登記矩陣</span>
-            </button>
-            <button onclick="switchTab('backup')" id="btn-backup" class="nav-btn w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium text-slate-400 hover:bg-slate-800 hover:text-slate-100 transition-all duration-200">
-                <i data-lucide="database" class="w-5 h-5"></i>
-                <span>備份與 Excel 匯入</span>
-            </button>
-        </nav>
-
-        <!-- Sidebar Footer & Install PWA Info -->
-        <div class="p-4 border-t border-slate-800 bg-slate-950/40 text-xs text-slate-400 space-y-2">
-            <div class="flex justify-between items-center">
-                <span>連線狀態:</span>
-                <span class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-xs font-semibold bg-emerald-500/10 text-emerald-400">
-                    <span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-ping"></span>
-                    離線就緒
-                </span>
-            </div>
-            <button id="pwa-install-btn" class="hidden w-full bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-medium py-2 px-3 rounded-lg text-center transition duration-200">
-                安裝為電腦/手機 App
-            </button>
-        </div>
-    </aside>
-
-    <!-- Main Content Area -->
-    <main class="flex-1 flex flex-col overflow-hidden">
-        <!-- Top bar -->
-        <header class="bg-white border-b border-slate-200 h-16 shrink-0 flex items-center justify-between px-6">
-            <div class="flex items-center gap-4">
-                <h2 id="current-tab-title" class="font-bold text-slate-800 text-xl">儀表板總覽</h2>
-            </div>
-            <div class="flex items-center gap-4 text-xs font-medium text-slate-500">
-                <span id="system-time"></span>
-                <span class="bg-indigo-50 text-indigo-600 px-2.5 py-1 rounded-full font-semibold" id="count-summary">0 位學生 / 0 項費用</span>
-            </div>
-        </header>
-
-        <!-- Tab Content Wrapper -->
-        <div class="flex-1 overflow-y-auto p-6 md:p-8">
-
-            <!-- TAB 1: Dashboard -->
-            <section id="tab-dashboard" class="space-y-6">
-                <!-- Stat Cards -->
-                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-                    <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 flex items-center gap-5">
-                        <div class="p-3 bg-indigo-50 text-indigo-600 rounded-xl">
-                            <i data-lucide="landmark" class="w-6 h-6"></i>
-                        </div>
-                        <div>
-                            <p class="text-sm font-medium text-slate-400">總應收金額</p>
-                            <h3 class="text-2xl font-black mt-0.5" id="dash-total-expect">$0</h3>
-                        </div>
-                    </div>
-                    <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 flex items-center gap-5">
-                        <div class="p-3 bg-emerald-50 text-emerald-600 rounded-xl">
-                            <i data-lucide="check-circle" class="w-6 h-6"></i>
-                        </div>
-                        <div>
-                            <p class="text-sm font-medium text-slate-400">總已收金額</p>
-                            <h3 class="text-2xl font-black text-emerald-600 mt-0.5" id="dash-total-collected">$0</h3>
-                        </div>
-                    </div>
-                    <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 flex items-center gap-5">
-                        <div class="p-3 bg-rose-50 text-rose-600 rounded-xl">
-                            <i data-lucide="alert-circle" class="w-6 h-6"></i>
-                        </div>
-                        <div>
-                            <p class="text-sm font-medium text-slate-400">總未收金額</p>
-                            <h3 class="text-2xl font-black text-rose-500 mt-0.5" id="dash-total-pending">$0</h3>
-                        </div>
-                    </div>
-                    <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 flex items-center gap-5">
-                        <div class="p-3 bg-amber-50 text-amber-600 rounded-xl">
-                            <i data-lucide="percent" class="w-6 h-6"></i>
-                        </div>
-                        <div class="w-full">
-                            <p class="text-sm font-medium text-slate-400">收費達成率</p>
-                            <h3 class="text-2xl font-black text-amber-600 mt-0.5" id="dash-rate-pct">0%</h3>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Overall Progress Card -->
-                <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-100">
-                    <h4 class="font-bold text-slate-700 mb-4 flex items-center gap-2">
-                        <i data-lucide="trending-up" class="w-5 h-5 text-indigo-500"></i> 全體實時收費進度
-                    </h4>
-                    <div class="w-full bg-slate-100 h-6 rounded-full overflow-hidden flex shadow-inner">
-                        <div id="progress-collected-bar" class="bg-emerald-500 h-full transition-all duration-500 flex items-center justify-center text-[11px] font-bold text-white" style="width: 0%">0%</div>
-                        <div id="progress-partial-bar" class="bg-amber-400 h-full transition-all duration-500 flex items-center justify-center text-[11px] font-bold text-slate-800" style="width: 0%">0%</div>
-                        <div id="progress-unpaid-bar" class="bg-slate-200 h-full transition-all duration-500 flex items-center justify-center text-[11px] font-bold text-slate-400" style="width: 100%">100%</div>
-                    </div>
-                    <div class="flex gap-4 mt-4 text-xs font-semibold justify-center">
-                        <span class="flex items-center gap-1.5"><span class="w-3 h-3 bg-emerald-500 rounded-full"></span>已繳清</span>
-                        <span class="flex items-center gap-1.5"><span class="w-3 h-3 bg-amber-400 rounded-full"></span>部分繳納</span>
-                        <span class="flex items-center gap-1.5"><span class="w-3 h-3 bg-slate-200 rounded-full"></span>完全未繳</span>
-                    </div>
-                </div>
-
-                <!-- Fee Item Wise Statistics -->
-                <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-100">
-                    <h4 class="font-bold text-slate-700 mb-4">各收費項目統計狀況</h4>
-                    <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6" id="dash-fee-list">
-                        <!-- Dynamic generated fee list cards go here -->
-                    </div>
-                </div>
-            </section>
-
-            <!-- TAB 2: Students Roster -->
-            <section id="tab-students" class="hidden space-y-6">
-                <!-- Two Column Layout: Editor & List -->
-                <div class="grid grid-cols-1 xl:grid-cols-3 gap-6">
-                    <!-- Column 1: Editor Form & New Bulk Import -->
-                    <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 h-fit space-y-6">
-                        <h4 class="font-bold text-slate-800 text-lg flex items-center gap-2" id="student-editor-title">
-                            <i data-lucide="user-plus" class="text-indigo-500"></i> 新增學生資料
-                        </h4>
-                        <form id="student-form" onsubmit="saveStudent(event)" class="space-y-4">
-                            <input type="hidden" id="student-edit-id" value="">
-                            <div>
-                                <label class="block text-xs font-bold uppercase text-slate-500 mb-1.5">班級 (如: 三年一班)</label>
-                                <input type="text" id="student-class" required class="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 text-sm">
-                            </div>
-                            <div class="grid grid-cols-2 gap-4">
-                                <div>
-                                    <label class="block text-xs font-bold uppercase text-slate-500 mb-1.5">座號 (如: 01)</label>
-                                    <input type="number" min="1" max="99" id="student-seat" required class="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 text-sm">
-                                </div>
-                                <div>
-                                    <label class="block text-xs font-bold uppercase text-slate-500 mb-1.5">姓名</label>
-                                    <input type="text" id="student-name" required class="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 text-sm">
-                                </div>
-                            </div>
-                            <div class="pt-2 flex gap-2">
-                                <button type="submit" class="flex-1 bg-indigo-600 hover:bg-indigo-500 text-white font-semibold py-2.5 px-4 rounded-xl text-sm shadow-md shadow-indigo-600/10 transition">
-                                    儲存資料
-                                </button>
-                                <button type="button" onclick="cancelStudentEdit()" id="btn-student-cancel" class="hidden px-4 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-xl text-sm transition">
-                                    取消
-                                </button>
-                            </div>
-                        </form>
-
-                        <!-- Optimized Class-First Bulk Import Panel -->
-                        <div class="border-t border-slate-100 pt-6">
-                            <h5 class="text-sm font-bold text-slate-700 mb-3 flex items-center gap-2">
-                                <i data-lucide="sparkles" class="text-indigo-500 w-4 h-4"></i> 快速批量匯入名單
-                            </h5>
-                            <p class="text-xs text-slate-400 mb-4">請先指定目標班級，再貼入座號及姓名資料，以防格式錯亂。</p>
-                            
-                            <div class="space-y-3 mb-3">
-                                <div>
-                                    <label class="block text-[10px] font-bold uppercase text-slate-400 mb-1">1. 選擇或填寫班級</label>
-                                    <div class="grid grid-cols-2 gap-2">
-                                        <select id="bulk-class-select" onchange="toggleBulkClassInput()" class="w-full px-2 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-xs font-medium focus:ring-1 focus:ring-indigo-500 outline-none">
-                                            <option value="">-- 手動輸入 --</option>
-                                        </select>
-                                        <input type="text" id="bulk-class-input" placeholder="填寫新班級名稱" class="w-full px-2.5 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-xs focus:ring-1 focus:ring-indigo-500 outline-none">
-                                    </div>
-                                </div>
-                                
-                                <div>
-                                    <label class="block text-[10px] font-bold uppercase text-slate-400 mb-1">2. 貼入學生資料 (座號 姓名)</label>
-                                    <textarea id="student-bulk-text" rows="5" placeholder="例如：
-01 王小明
-02 李美玲
-03 張家豪" class="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl text-xs font-mono focus:outline-none focus:ring-2 focus:ring-indigo-500"></textarea>
-                                </div>
-                            </div>
-                            
-                            <button onclick="bulkImportStudents()" class="w-full py-2 bg-indigo-50 hover:bg-indigo-100 text-indigo-600 font-bold text-xs rounded-lg transition">
-                                開始批量匯入
-                            </button>
-                        </div>
-                    </div>
-
-                    <!-- Column 2: Roster List Table with Batch Operations -->
-                    <div class="xl:col-span-2 bg-white p-6 rounded-2xl shadow-sm border border-slate-100 space-y-4">
-                        <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 border-b border-slate-100 pb-4">
-                            <div>
-                                <h4 class="font-bold text-slate-800 text-lg">目前學生名單</h4>
-                                <p class="text-xs text-slate-400 mt-0.5">可透過下方篩選器來指定特定班級進行整班修改</p>
-                            </div>
-                            <!-- Search & Class Filters -->
-                            <div class="flex gap-2 w-full sm:w-auto">
-                                <select id="student-filter-class" onchange="onStudentFilterClassChange()" class="bg-slate-50 border border-slate-200 rounded-lg px-3 py-1.5 text-xs font-semibold focus:ring-2 focus:ring-indigo-500 outline-none">
-                                    <option value="all">所有班級</option>
-                                </select>
-                                <input type="text" id="student-search" oninput="renderStudents()" placeholder="搜尋姓名..." class="bg-slate-50 border border-slate-200 rounded-lg px-3 py-1.5 text-xs focus:ring-2 focus:ring-indigo-500 outline-none">
-                            </div>
-                        </div>
-
-                        <!-- NEW: Powerful Batch Operations Bar -->
-                        <div id="batch-operations-bar" class="bg-slate-50 border border-slate-200 p-4 rounded-xl flex flex-wrap items-center justify-between gap-4">
-                            <div class="flex items-center gap-2 text-xs">
-                                <span class="bg-indigo-600 text-white p-1 rounded-md"><i data-lucide="wrench" class="w-3.5 h-3.5"></i></span>
-                                <div>
-                                    <span class="font-bold text-slate-700">整班批次變更</span>
-                                    <p class="text-[10px] text-slate-400" id="batch-selected-info">請先在右上角「篩選指定班級」以啟用批次功能</p>
-                                </div>
-                            </div>
-                            <div class="flex items-center gap-2 flex-wrap">
-                                <input type="text" id="batch-rename-input" disabled placeholder="新班級名稱" class="bg-white border border-slate-200 rounded-lg px-3 py-1.5 text-xs focus:ring-2 focus:ring-indigo-500 outline-none disabled:bg-slate-100 disabled:text-slate-400 w-32">
-                                <button id="batch-rename-btn" onclick="batchRenameClass()" disabled class="bg-indigo-50 text-indigo-600 hover:bg-indigo-100 disabled:opacity-50 disabled:cursor-not-allowed font-bold text-xs px-3 py-1.5 rounded-lg transition flex items-center gap-1">
-                                    <i data-lucide="edit-2" class="w-3.5 h-3.5"></i> 改班名
-                                </button>
-                                <button id="batch-delete-btn" onclick="batchDeleteClass()" disabled class="bg-rose-50 text-rose-600 hover:bg-rose-100 disabled:opacity-50 disabled:cursor-not-allowed font-bold text-xs px-3 py-1.5 rounded-lg transition flex items-center gap-1">
-                                    <i data-lucide="trash-2" class="w-3.5 h-3.5"></i> 整班刪除
-                                </button>
-                            </div>
-                        </div>
-
-                        <div class="overflow-x-auto">
-                            <table class="w-full text-left border-collapse">
-                                <thead>
-                                    <tr class="border-b border-slate-100 text-slate-400 font-bold text-xs uppercase bg-slate-50/50">
-                                        <th class="py-3 px-4">班級</th>
-                                        <th class="py-3 px-4">座號</th>
-                                        <th class="py-3 px-4">姓名</th>
-                                        <th class="py-3 px-4 text-right">操作</th>
-                                    </tr>
-                                </thead>
-                                <tbody id="student-table-body" class="divide-y divide-slate-100 text-sm">
-                                    <!-- Dynamic rows -->
-                                </tbody>
-                            </table>
-                            <div id="student-empty-state" class="hidden text-center py-12 text-slate-400">
-                                <i data-lucide="user-minus" class="w-12 h-12 mx-auto mb-3 opacity-30"></i>
-                                <span>目前尚無學生資料，請在左側新增。</span>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </section>
-
-            <!-- TAB 3: Fee Item Management -->
-            <section id="tab-fees" class="hidden space-y-6">
-                <div class="grid grid-cols-1 xl:grid-cols-3 gap-6">
-                    <!-- Column 1: Add Fee Form -->
-                    <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 h-fit space-y-6">
-                        <h4 class="font-bold text-slate-800 text-lg flex items-center gap-2" id="fee-editor-title">
-                            <i data-lucide="plus-circle" class="text-indigo-500"></i> 新增費用項目
-                        </h4>
-                        <form id="fee-form" onsubmit="saveFee(event)" class="space-y-4">
-                            <input type="hidden" id="fee-edit-id" value="">
-                            <div>
-                                <label class="block text-xs font-bold uppercase text-slate-500 mb-1.5">項目名稱 (例如：校外教學)</label>
-                                <input type="text" id="fee-name" required placeholder="如：校外教學、班費" class="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 text-sm">
-                            </div>
-                            <div>
-                                <label class="block text-xs font-bold uppercase text-slate-500 mb-1.5">設定單人預設應收金額</label>
-                                <div class="relative">
-                                    <span class="absolute left-4 top-2.5 text-slate-400 font-bold">$</span>
-                                    <input type="number" min="0" id="fee-amount" required placeholder="0" class="w-full pl-8 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 text-sm">
-                                </div>
-                            </div>
-                            <div class="pt-2 flex gap-2">
-                                <button type="submit" class="flex-1 bg-indigo-600 hover:bg-indigo-500 text-white font-semibold py-2.5 px-4 rounded-xl text-sm shadow-md shadow-indigo-600/10 transition">
-                                    儲存項目
-                                </button>
-                                <button type="button" onclick="cancelFeeEdit()" id="btn-fee-cancel" class="hidden px-4 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-xl text-sm transition">
-                                    取消
-                                </button>
-                            </div>
-                        </form>
-                    </div>
-
-                    <!-- Column 2: Fee list -->
-                    <div class="xl:col-span-2 bg-white p-6 rounded-2xl shadow-sm border border-slate-100">
-                        <h4 class="font-bold text-slate-800 text-lg mb-6">現有費用名目與預設單價</h4>
-                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4" id="fee-list-container">
-                            <!-- Dynamic fee cards -->
-                        </div>
-                        <div id="fee-empty-state" class="hidden text-center py-12 text-slate-400">
-                            <i data-lucide="receipt" class="w-12 h-12 mx-auto mb-3 opacity-30"></i>
-                            <span>目前尚無任何收費項目。</span>
-                        </div>
-                    </div>
-                </div>
-            </section>
-
-            <!-- TAB 4: Fee Registration Matrix -->
-            <section id="tab-matrix" class="hidden space-y-6">
-                <!-- Search & Filters -->
-                <div class="bg-white p-4 rounded-2xl shadow-sm border border-slate-100 flex flex-wrap gap-4 items-center justify-between">
-                    <div class="flex flex-wrap items-center gap-3">
-                        <select id="matrix-filter-class" onchange="renderMatrix()" class="bg-slate-50 border border-slate-200 rounded-xl px-4 py-2 text-sm font-semibold focus:ring-2 focus:ring-indigo-500 outline-none">
-                            <option value="all">所有班級</option>
-                        </select>
-                        <select id="matrix-filter-status" onchange="renderMatrix()" class="bg-slate-50 border border-slate-200 rounded-xl px-4 py-2 text-sm font-semibold focus:ring-2 focus:ring-indigo-500 outline-none">
-                            <option value="all">所有繳費狀態</option>
-                            <option value="已繳清">已繳清</option>
-                            <option value="部分繳納">部分繳納</option>
-                            <option value="未繳">未繳</option>
-                        </select>
-                        <input type="text" id="matrix-search" oninput="renderMatrix()" placeholder="搜尋學生姓名..." class="bg-slate-50 border border-slate-200 rounded-xl px-4 py-2 text-sm focus:ring-2 focus:ring-indigo-500 outline-none w-48">
-                    </div>
-                    <div class="text-xs font-semibold text-slate-400 bg-slate-50 px-3 py-1.5 rounded-lg flex items-center gap-1.5">
-                        <i data-lucide="info" class="w-4 h-4 text-indigo-500 shrink-0"></i>
-                        <span>點擊狀態方格可修改繳費紀錄、註記繳清時間與自訂應繳金額 (數據自動重算)</span>
-                    </div>
-                </div>
-
-                <!-- Scrollable Spreadsheet-like matrix -->
-                <div class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
-                    <div class="overflow-x-auto overflow-y-auto max-h-[600px] matrix-scroll" id="matrix-scroll-container">
-                        <table class="w-full text-left border-collapse table-fixed min-w-[900px]">
-                            <thead>
-                                <tr id="matrix-header-row" class="bg-slate-50/95 backdrop-blur sticky top-0 z-10 border-b border-slate-200">
-                                    <!-- Dynamic headers (Class, Seat, Name, Fee1, Fee2...) with inner stats -->
-                                </tr>
-                            </thead>
-                            <tbody id="matrix-body" class="divide-y divide-slate-100">
-                                <!-- Dynamic student rows -->
-                            </tbody>
-                        </table>
-                    </div>
-                    <div id="matrix-empty-state" class="hidden text-center py-20 text-slate-400">
-                        <i data-lucide="grid-3x3" class="w-12 h-12 mx-auto mb-3 opacity-30"></i>
-                        <span>請先至「學生名單」與「費用項目」建立基本資料。</span>
-                    </div>
-                </div>
-            </section>
-
-            <!-- TAB 5: Backup & Export -->
-            <section id="tab-backup" class="hidden space-y-6 animate-in fade-in duration-200">
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <!-- Export Card -->
-                    <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 flex flex-col justify-between">
-                        <div>
-                            <div class="p-3 bg-emerald-50 text-emerald-600 rounded-xl w-fit mb-4">
-                                <i data-lucide="download" class="w-6 h-6"></i>
-                            </div>
-                            <h4 class="font-bold text-slate-800 text-lg mb-2">匯出收費清單 (Excel 格式)</h4>
-                            <p class="text-sm text-slate-400 mb-6">匯出包含所有學生、班級、座號，以及各費用自訂應收金額、繳費時間與繳交狀態的 CSV 檔案。已完美適應微軟 Excel 的中文字碼 (UTF-8 with BOM)，不會產生亂碼。</p>
-                        </div>
-                        <div class="space-y-2">
-                            <button onclick="exportToExcel()" class="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-semibold py-3 px-4 rounded-xl text-sm transition flex items-center justify-center gap-2">
-                                <i data-lucide="file-spreadsheet" class="w-5 h-5"></i> 匯出 Excel (CSV)
-                            </button>
-                            <button onclick="exportJSONBackup()" class="w-full bg-indigo-50 hover:bg-indigo-100 text-indigo-600 font-semibold py-2.5 px-4 rounded-xl text-xs transition flex items-center justify-center gap-2">
-                                <i data-lucide="database" class="w-4 h-4"></i> 備份系統完整資料 (JSON)
-                            </button>
-                        </div>
-                    </div>
-
-                    <!-- Import Card -->
-                    <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 flex flex-col justify-between">
-                        <div>
-                            <div class="p-3 bg-indigo-50 text-indigo-600 rounded-xl w-fit mb-4">
-                                <i data-lucide="upload" class="w-6 h-6"></i>
-                            </div>
-                            <h4 class="font-bold text-slate-800 text-lg mb-2">匯入學生與費用數據</h4>
-                            <p class="text-sm text-slate-400 mb-6">您可以上傳先前備份的系統檔案 (.json)，或是下載並上傳本系統規定的 CSV 格式直接大批更新繳費、註記時間與自訂應收額數據。</p>
-                        </div>
-                        <div class="space-y-4">
-                            <div>
-                                <label class="block text-xs font-bold uppercase text-slate-500 mb-2">選擇備份檔案 (.json 或 .csv)</label>
-                                <input type="file" id="import-file" accept=".json, .csv" class="w-full text-xs text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-bold file:bg-indigo-50 file:text-indigo-600 hover:file:bg-indigo-100" />
-                            </div>
-                            <div class="flex gap-2">
-                                <button onclick="triggerImport()" class="flex-1 bg-indigo-600 hover:bg-indigo-500 text-white font-semibold py-3 px-4 rounded-xl text-sm transition flex items-center justify-center gap-2">
-                                    <i data-lucide="upload" class="w-5 h-5"></i> 執行上傳匯入
-                                </button>
-                                <button onclick="downloadCSVTemplate()" class="bg-slate-50 hover:bg-slate-100 border border-slate-200 text-slate-600 font-bold px-4 py-3 rounded-xl text-sm transition" title="下載 Excel CSV 匯入範本">
-                                    下載 Excel 範本
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- PWA Hosting details -->
-                    <div class="bg-indigo-950 text-slate-200 p-6 rounded-2xl border border-indigo-900 flex flex-col justify-between md:col-span-2">
-                        <div class="space-y-1 mb-4">
-                            <h5 class="font-bold text-white flex items-center gap-2 text-base">
-                                <i data-lucide="smartphone" class="text-indigo-400"></i> PWA 移動式應用程式安裝
-                            </h5>
-                            <p class="text-xs text-indigo-200/80">本網頁已內置 App 聲明書。如果您將本網頁託管在任何 HTTPS 網站上，即可在手機、iPad 或電腦桌面上直接安裝為免瀏覽器的獨立 App 離線使用！</p>
-                        </div>
-                        <button onclick="downloadPWABackup()" class="w-fit bg-white hover:bg-indigo-50 text-indigo-950 font-bold text-xs py-2.5 px-4 rounded-xl whitespace-nowrap transition flex items-center gap-2">
-                            <i data-lucide="package" class="w-4 h-4"></i> 下載自託管 PWA 部署包
-                        </button>
-                    </div>
-
-                    <!-- NEW: Danger Zone (Reset Local Storage and wipe data) -->
-                    <div class="bg-rose-50 border border-rose-200 p-6 rounded-2xl flex flex-col justify-between md:col-span-2 animate-in fade-in duration-200">
-                        <div class="mb-4">
-                            <h5 class="font-bold text-rose-900 flex items-center gap-2 text-base">
-                                <i data-lucide="alert-triangle" class="text-rose-600"></i> 危險區域：清除與重置系統
-                            </h5>
-                            <p class="text-xs text-rose-700/85 mt-1">
-                                這將會永久清除瀏覽器本地快取中所儲存的<strong>所有班級、學生、費用名目設定以及全部收交費紀錄</strong>。此動作無法還原，通常在您想要大掃除或系統計算混亂時使用。
-                            </p>
-                        </div>
-                        <button onclick="purgeSystemData()" class="w-fit bg-rose-600 hover:bg-rose-700 text-white font-bold text-xs py-2.5 px-4 rounded-xl transition flex items-center gap-2 shadow-md shadow-rose-600/10">
-                            <i data-lucide="trash-2" class="w-4 h-4"></i> 清空資料並還原初始狀態
-                        </button>
-                    </div>
-                </div>
-            </section>
-
-        </div>
-    </main>
-
-    <!-- Custom Dialog: Quick Payment Status Adjustor -->
-    <div id="payment-modal" class="fixed inset-0 bg-slate-900/40 backdrop-blur-sm hidden items-center justify-center z-50">
-        <div class="bg-white rounded-3xl p-6 shadow-xl w-full max-w-md mx-4 animate-in fade-in zoom-in-95 duration-200">
-            <div class="flex justify-between items-start mb-4">
-                <div>
-                    <span class="text-xs font-bold text-indigo-500 uppercase tracking-wider" id="modal-fee-name">費用項目</span>
-                    <h3 class="font-bold text-slate-800 text-lg mt-0.5" id="modal-student-name">學生姓名</h3>
-                </div>
-                <button onclick="closePaymentModal()" class="text-slate-400 hover:text-slate-600 p-1.5 rounded-lg hover:bg-slate-50 transition">
-                    <i data-lucide="x" class="w-5 h-5"></i>
-                </button>
-            </div>
-
-            <!-- Custom Target Amount per Student (SOLVES DIFFERENT FEES PER STUDENT) -->
-            <div class="bg-slate-50 p-4 rounded-2xl border border-slate-100 space-y-2 mb-4">
-                <div class="flex justify-between items-center">
-                    <label class="text-xs font-black text-slate-600">此生專屬應繳金額</label>
-                    <button onclick="restoreModalTargetAmount()" class="text-indigo-600 hover:text-indigo-800 text-[10px] font-bold">恢復預設原價</button>
-                </div>
-                <div class="relative">
-                    <span class="absolute left-3.5 top-2.5 text-slate-400 font-bold text-sm">$</span>
-                    <input type="number" id="modal-target-amount" min="0" oninput="onModalTargetAmountChange()" class="w-full pl-8 pr-4 py-2 bg-white border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 font-bold" />
-                </div>
-                <p class="text-[10px] text-slate-400 leading-normal">如果此生有減免、補助或自費項目，可直接在此輸入該生的專屬應繳總金額。</p>
-            </div>
-
-            <!-- Dynamically Displaying Paid Date & Time inside Modal -->
-            <div id="modal-paid-time-box" class="hidden bg-emerald-50 border border-emerald-100 p-3 rounded-2xl text-xs flex justify-between items-center mb-4 font-semibold text-emerald-800">
-                <span>繳清註記時間：</span>
-                <span id="modal-paid-time-val"></span>
-            </div>
-
-            <div class="space-y-4">
-                <label class="block text-xs font-bold text-slate-500">更改繳費狀態</label>
-                <div class="grid grid-cols-3 gap-2">
-                    <button onclick="setModalStatus('已繳清')" id="btn-status-paid" class="py-3 px-4 rounded-xl border text-center transition font-semibold text-xs flex flex-col items-center gap-1.5 border-slate-200 text-slate-600 hover:bg-slate-50">
-                        <i data-lucide="check-circle-2" class="w-5 h-5 text-emerald-500"></i>
-                        <span>已繳清</span>
-                    </button>
-                    <button onclick="setModalStatus('部分繳納')" id="btn-status-partial" class="py-3 px-4 rounded-xl border text-center transition font-semibold text-xs flex flex-col items-center gap-1.5 border-slate-200 text-slate-600 hover:bg-slate-50">
-                        <i data-lucide="alert-circle" class="w-5 h-5 text-amber-500"></i>
-                        <span>部分繳納</span>
-                    </button>
-                    <button onclick="setModalStatus('未繳')" id="btn-status-unpaid" class="py-3 px-4 rounded-xl border text-center transition font-semibold text-xs flex flex-col items-center gap-1.5 border-slate-200 text-slate-600 hover:bg-slate-50">
-                        <i data-lucide="x-circle" class="w-5 h-5 text-rose-500"></i>
-                        <span>未繳</span>
-                    </button>
-                </div>
-
-                <!-- Partial payment panel -->
-                <div id="modal-partial-amount-box" class="hidden bg-slate-50 p-4 rounded-xl space-y-3">
-                    <div class="flex justify-between items-center">
-                        <label class="text-xs font-bold text-slate-600">已實際繳納金額</label>
-                        <span class="text-rose-500 text-[10px] font-medium" id="modal-partial-warning"></span>
-                    </div>
-                    <div class="relative">
-                        <span class="absolute left-3.5 top-2 text-slate-400 font-bold">$</span>
-                        <input type="number" id="modal-paid-amount" min="0" class="w-full pl-8 pr-4 py-1.5 bg-white border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 font-bold" />
-                    </div>
-                    <div class="grid grid-cols-3 gap-1.5">
-                        <button onclick="fillPartialPct(0.25)" class="text-[10px] py-1 bg-white hover:bg-slate-100 border border-slate-200 rounded text-slate-500 font-semibold">1/4 金額</button>
-                        <button onclick="fillPartialPct(0.5)" class="text-[10px] py-1 bg-white hover:bg-slate-100 border border-slate-200 rounded text-slate-500 font-semibold">1/2 半額</button>
-                        <button onclick="fillPartialPct(0.75)" class="text-[10px] py-1 bg-white hover:bg-slate-100 border border-slate-200 rounded text-slate-500 font-semibold">3/4 金額</button>
-                    </div>
-                </div>
-
-                <div class="pt-2 flex gap-2">
-                    <button onclick="savePaymentModal()" class="flex-1 bg-indigo-600 hover:bg-indigo-500 text-white font-semibold py-2.5 px-4 rounded-xl text-sm shadow-md shadow-indigo-600/10 transition">
-                        確認修改
-                    </button>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- Toast Notification Toaster Container -->
-    <div id="toast-container" class="fixed bottom-5 right-5 z-50 flex flex-col gap-2.5 max-w-sm pointer-events-none"></div>
-
-    <!-- CORE SYSTEM SCRIPTS -->
-    <script>
-        // System State
-        let state = {
-            students: [],
-            feeItems: [],
-            payments: {} // key: `${studentId}_${feeItemId}`, value: { status: '已繳清'|'部分繳納'|'未繳', paidAmount: 0, targetAmount: 1500, paidAt: '2026/05/29 13:51' }
-        };
-
-        // UI active tab
-        let activeTab = 'dashboard';
-
-        // Pure Clean Starter Data (Defaulting to Empty State so Charlie Teacher can start fresh with zero errors!)
-        const starterData = {
-            students: [],
-            feeItems: [],
-            payments: {}
-        };
-
-        // Init System
-        window.onload = function() {
-            lucide.createIcons();
-            loadLocalStorageData();
-            updateTime();
-            setInterval(updateTime, 60000);
-            setupDynamicPWAManifest(); // Register dynamic manifest setup
-            renderAll();
-            registerMockServiceWorker();
-        };
-
-        // Dynamically build the PWA Manifest to guarantee it matches '查理學生收費系統'
-        function setupDynamicPWAManifest() {
-            const manifestObj = {
-                "name": "查理學生收費系統 - PWA",
-                "short_name": "查理收費",
-                "start_url": "./index.html",
-                "display": "standalone",
-                "background_color": "#f8fafc",
-                "theme_color": "#4318ed",
-                "icons": [
-                    {
-                        "src": "https://img.icons8.com/color/192/wallet.png",
-                        "sizes": "192x192",
-                        "type": "image/png"
-                    },
-                    {
-                        "src": "https://img.icons8.com/color/512/wallet.png",
-                        "sizes": "512x512",
-                        "type": "image/png"
-                    }
-                ]
-            };
-            const stringManifest = JSON.stringify(manifestObj);
-            const blob = new Blob([stringManifest], { type: 'application/json' });
-            const manifestURL = URL.createObjectURL(blob);
-            const manifestLink = document.getElementById('manifest-link');
-            if (manifestLink) {
-                manifestLink.setAttribute('href', manifestURL);
-            }
-        }
-
-        // Keep local storage persistent
-        function loadLocalStorageData() {
-            const saved = localStorage.getItem('class_fee_manager_state');
-            if (saved) {
-                try {
-                    state = JSON.parse(saved);
-                    // Defensive validation: Clean orphan records of students or fee items that might have been removed
-                    sanitizePaymentsDatabase();
-                } catch(e) {
-                    console.error("儲存的資料損壞，重新初始化", e);
-                    state = JSON.parse(JSON.stringify(starterData));
-                }
-            } else {
-                // First launch, start completely clean
-                state = JSON.parse(JSON.stringify(starterData));
-                saveToLocalStorage();
-            }
-        }
-
-        // Clean orphan records to avoid calculation mismatch
-        function sanitizePaymentsDatabase() {
-            if (!state.payments) state.payments = {};
-            if (!state.students) state.students = [];
-            if (!state.feeItems) state.feeItems = [];
-
-            const activeStudentIds = state.students.map(s => s.id);
-            const activeFeeIds = state.feeItems.map(f => f.id);
-
-            Object.keys(state.payments).forEach(key => {
-                const [sId, fId] = key.split('_');
-                if (!activeStudentIds.includes(sId) || !activeFeeIds.includes(fId)) {
-                    delete state.payments[key];
-                }
-            });
-        }
-
-        function saveToLocalStorage() {
-            sanitizePaymentsDatabase();
-            localStorage.setItem('class_fee_manager_state', JSON.stringify(state));
-        }
-
-        // Update top-bar system time
-        function updateTime() {
-            const now = new Date();
-            const year = now.getFullYear();
-            const month = String(now.getMonth() + 1).padStart(2, '0');
-            const date = String(now.getDate()).padStart(2, '0');
-            const hours = String(now.getHours()).padStart(2, '0');
-            const minutes = String(now.getMinutes()).padStart(2, '0');
-            const systemTimeEl = document.getElementById('system-time');
-            if (systemTimeEl) {
-                systemTimeEl.innerText = `${year}/${month}/${date} ${hours}:${minutes}`;
-            }
-        }
-
-        // Custom Toaster Message box
-        function showNotification(text, type = 'success') {
-            const container = document.getElementById('toast-container');
-            if (!container) return;
-            const toast = document.createElement('div');
-            toast.className = `flex items-center gap-3 p-4 rounded-xl shadow-lg border text-sm font-semibold pointer-events-auto transition duration-300 transform translate-y-5 opacity-0`;
-            
-            if (type === 'success') {
-                toast.classList.add('bg-white', 'text-slate-800', 'border-emerald-100');
-                toast.innerHTML = `<i data-lucide="check" class="text-emerald-500 w-5 h-5"></i><span>${text}</span>`;
-            } else if (type === 'error') {
-                toast.classList.add('bg-rose-50', 'text-rose-800', 'border-rose-100');
-                toast.innerHTML = `<i data-lucide="x" class="text-rose-500 w-5 h-5"></i><span>${text}</span>`;
-            } else if (type === 'warning') {
-                toast.classList.add('bg-amber-50', 'text-amber-800', 'border-amber-100');
-                toast.innerHTML = `<i data-lucide="alert-circle" class="text-amber-500 w-5 h-5"></i><span>${text}</span>`;
-            }
-
-            container.appendChild(toast);
-            lucide.createIcons({attrs: {class: 'shrink-0'}});
-
-            // Trigger animation
-            setTimeout(() => {
-                toast.classList.remove('translate-y-5', 'opacity-0');
-            }, 50);
-
-            // Remove automatically
-            setTimeout(() => {
-                toast.classList.add('opacity-0', 'translate-y-[-10px]');
-                setTimeout(() => toast.remove(), 300);
-            }, 3000);
-        }
-
-        // Global State refresh
-        function renderAll() {
-            // Update counts in header
-            const countSummaryEl = document.getElementById('count-summary');
-            if (countSummaryEl) {
-                countSummaryEl.innerText = `${state.students.length} 位學生 / ${state.feeItems.length} 項費用`;
-            }
-            
-            // Populate Dropdowns with available classes
-            updateClassDropdowns();
-
-            // Render current active view
-            if (activeTab === 'dashboard') {
-                renderDashboard();
-            } else if (activeTab === 'students') {
-                renderStudents();
-            } else if (activeTab === 'fees') {
-                renderFees();
-            } else if (activeTab === 'matrix') {
-                renderMatrix();
-            }
-
-            // Sync Lucide icons
-            lucide.createIcons();
-        }
-
-        function updateClassDropdowns() {
-            const classes = [...new Set(state.students.map(s => s.class))].sort();
-            
-            const dropdowns = ['student-filter-class', 'matrix-filter-class', 'bulk-class-select'];
-            dropdowns.forEach(ddId => {
-                const el = document.getElementById(ddId);
-                if (!el) return;
-                const currentVal = el.value;
-                
-                if (ddId === 'bulk-class-select') {
-                    // Bulk class dropdown needs to keep "--手動輸入--" option
-                    el.innerHTML = '<option value="">-- 手動新班級 --</option>';
-                    classes.forEach(c => {
-                        const opt = document.createElement('option');
-                        opt.value = c;
-                        opt.textContent = c;
-                        el.appendChild(opt);
-                    });
-                } else {
-                    el.innerHTML = '<option value="all">所有班級</option>';
-                    classes.forEach(c => {
-                        const opt = document.createElement('option');
-                        opt.value = c;
-                        opt.textContent = c;
-                        el.appendChild(opt);
-                    });
-                }
-                el.value = currentVal || (ddId === 'bulk-class-select' ? "" : "all");
-            });
-
-            // Auto toggle bulk text input visibility on change
-            toggleBulkClassInput();
-            // Sync current batch operations state based on active filter
-            updateBatchOperationsBar();
-        }
-
-        // Toggle text field based on dropdown selection in bulk import
-        function toggleBulkClassInput() {
-            const dropdown = document.getElementById('bulk-class-select');
-            const inputField = document.getElementById('bulk-class-input');
-            if (dropdown && inputField) {
-                if (dropdown.value !== "") {
-                    inputField.classList.add('hidden');
-                    inputField.value = dropdown.value; // Sync selected value
-                } else {
-                    inputField.classList.remove('hidden');
-                    inputField.value = ""; // Clear for new input
-                }
-            }
-        }
-
-        // Sync batch operations bar state
-        function onStudentFilterClassChange() {
-            renderStudents();
-            updateBatchOperationsBar();
-        }
-
-        function updateBatchOperationsBar() {
-            const activeClass = document.getElementById('student-filter-class').value;
-            const renameInput = document.getElementById('batch-rename-input');
-            const renameBtn = document.getElementById('batch-rename-btn');
-            const deleteBtn = document.getElementById('batch-delete-btn');
-            const infoText = document.getElementById('batch-selected-info');
-
-            if (activeClass === 'all') {
-                renameInput.value = '';
-                renameInput.disabled = true;
-                renameBtn.disabled = true;
-                deleteBtn.disabled = true;
-                infoText.innerHTML = `請先在右上角「篩選指定班級」以啟用批次功能`;
-            } else {
-                renameInput.disabled = false;
-                renameInput.value = activeClass;
-                renameBtn.disabled = false;
-                deleteBtn.disabled = false;
-                // Count current students in this class
-                const classCount = state.students.filter(s => s.class === activeClass).length;
-                infoText.innerHTML = `已選中 <strong class="text-indigo-600">${activeClass}</strong> (共 ${classCount} 人)。您可整班更名或刪除。`;
-            }
-        }
-
-        // Tab Switcher
-        function switchTab(tabId) {
-            activeTab = tabId;
-            
-            // Hide all tabs
-            document.getElementById('tab-dashboard').classList.add('hidden');
-            document.getElementById('tab-students').classList.add('hidden');
-            document.getElementById('tab-fees').classList.add('hidden');
-            document.getElementById('tab-matrix').classList.add('hidden');
-            document.getElementById('tab-backup').classList.add('hidden');
-
-            // Reset Tab styling
-            document.querySelectorAll('.nav-btn').forEach(btn => {
-                btn.className = "nav-btn w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium text-slate-400 hover:bg-slate-800 hover:text-slate-100 transition-all duration-200";
-            });
-
-            // Show and set active
-            document.getElementById(`tab-${tabId}`).classList.remove('hidden');
-            const activeBtn = document.getElementById(`btn-${tabId}`);
-            if (activeBtn) {
-                activeBtn.className = "nav-btn w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all duration-200 bg-indigo-600 text-white shadow-md shadow-indigo-600/15";
-            }
-
-            // Set Title
-            const titleMap = {
-                'dashboard': '儀表板總覽',
-                'students': '學生名冊管理',
-                'fees': '收費項目設定',
-                'matrix': '收費登記矩陣',
-                'backup': '備份與 Excel 匯入'
-            };
-            document.getElementById('current-tab-title').innerText = titleMap[tabId];
-
-            renderAll();
-        }
-
-        // ==========================================
-        // TAB 1: DASHBOARD LOGIC
-        // ==========================================
-        function renderDashboard() {
-            let totalExpect = 0;
-            let totalCollected = 0;
-
-            // Compute exact expectation based on customized targetAmount per student if available
-            state.students.forEach(s => {
-                state.feeItems.forEach(fee => {
-                    const key = `${s.id}_${fee.id}`;
-                    const pay = state.payments[key];
-                    const expectedAmount = (pay && typeof pay.targetAmount !== 'undefined' && !isNaN(parseFloat(pay.targetAmount))) ? parseFloat(pay.targetAmount) : parseFloat(fee.amount);
-                    totalExpect += expectedAmount;
-                });
-            });
-
-            // Compute collected
-            Object.keys(state.payments).forEach(key => {
-                const [sId, fId] = key.split('_');
-                const studentExists = state.students.some(s => s.id === sId);
-                const feeExists = state.feeItems.some(f => f.id === fId);
-                
-                if (studentExists && feeExists) {
-                    const pay = state.payments[key];
-                    totalCollected += parseFloat(pay.paidAmount) || 0;
-                }
-            });
-
-            const totalPending = totalExpect - totalCollected;
-            const ratePct = totalExpect > 0 ? Math.round((totalCollected / totalExpect) * 100) : 0;
-
-            // Set simple numeric stats
-            document.getElementById('dash-total-expect').innerText = `$${totalExpect.toLocaleString()}`;
-            document.getElementById('dash-total-collected').innerText = `$${totalCollected.toLocaleString()}`;
-            document.getElementById('dash-total-pending').innerText = `$${totalPending.toLocaleString()}`;
-            document.getElementById('dash-rate-pct').innerText = `${ratePct}%`;
-
-            // Setup overall progress bar splits
-            let paidCount = 0;
-            let partialCount = 0;
-            let unpaidCount = 0;
-            let totalCombos = state.students.length * state.feeItems.length;
-
-            if (totalCombos > 0) {
-                state.students.forEach(s => {
-                    state.feeItems.forEach(f => {
-                        const key = `${s.id}_${f.id}`;
-                        const pay = state.payments[key];
-                        const payStatus = (pay && typeof pay.status === 'string') ? pay.status : '未繳';
-
-                        if (payStatus === '未繳' || payStatus.includes('未繳')) {
-                            unpaidCount++;
-                        } else if (payStatus === '已繳清' || payStatus.includes('已繳清')) {
-                            paidCount++;
-                        } else if (payStatus === '部分繳納' || payStatus.includes('部分繳納')) {
-                            partialCount++;
-                        }
-                    });
-                });
-
-                const paidPct = Math.round((paidCount / totalCombos) * 100);
-                const partialPct = Math.round((partialCount / totalCombos) * 100);
-                const unpaidPct = 100 - paidPct - partialPct;
-
-                const pBar = document.getElementById('progress-collected-bar');
-                pBar.style.width = `${paidPct}%`;
-                pBar.innerText = paidPct > 5 ? `${paidPct}%` : '';
-
-                const partBar = document.getElementById('progress-partial-bar');
-                partBar.style.width = `${partialPct}%`;
-                partBar.innerText = partialPct > 5 ? `${partialPct}%` : '';
-
-                const unpBar = document.getElementById('progress-unpaid-bar');
-                unpBar.style.width = `${unpaidPct}%`;
-                unpBar.innerText = unpaidPct > 5 ? `${unpaidPct}%` : '';
-            } else {
-                document.getElementById('progress-collected-bar').style.width = '0%';
-                document.getElementById('progress-partial-bar').style.width = '0%';
-                document.getElementById('progress-unpaid-bar').style.width = '100%';
-                document.getElementById('progress-unpaid-bar').innerText = '100%';
-            }
-
-            // Render individual Fee Item Statistics
-            const container = document.getElementById('dash-fee-list');
-            container.innerHTML = '';
-
-            if (state.feeItems.length === 0) {
-                container.innerHTML = `
-                    <div class="col-span-full text-center py-6 text-slate-400 text-sm">
-                        尚未設定收費項目。
-                    </div>`;
-                return;
-            }
-
-            state.feeItems.forEach(fee => {
-                let feeCollected = 0;
-                let feeExpect = 0;
-                let feePaidStudents = 0;
-                let feePartialStudents = 0;
-
-                state.students.forEach(s => {
-                    const key = `${s.id}_${fee.id}`;
-                    const pay = state.payments[key];
-                    const expectedAmount = (pay && typeof pay.targetAmount !== 'undefined' && !isNaN(parseFloat(pay.targetAmount))) ? parseFloat(pay.targetAmount) : parseFloat(fee.amount);
-                    const payStatus = (pay && typeof pay.status === 'string') ? pay.status : '未繳';
-                    
-                    feeExpect += expectedAmount;
-                    if (pay) {
-                        feeCollected += parseFloat(pay.paidAmount) || 0;
-                        if (payStatus === '已繳清' || payStatus.includes('已繳清')) feePaidStudents++;
-                        if (payStatus === '部分繳納' || payStatus.includes('部分繳納')) feePartialStudents++;
-                    }
-                });
-
-                const pct = feeExpect > 0 ? Math.round((feeCollected / feeExpect) * 100) : 0;
-
-                const card = document.createElement('div');
-                card.className = "bg-slate-50 border border-slate-100 p-5 rounded-2xl flex flex-col justify-between";
-                card.innerHTML = `
-                    <div>
-                        <div class="flex justify-between items-start mb-2">
-                            <h5 class="font-bold text-slate-800 text-base">${fee.name}</h5>
-                            <span class="bg-indigo-50 text-indigo-600 font-bold px-2.5 py-1 rounded-lg text-xs">原預設 $${fee.amount} / 人</span>
-                        </div>
-                        <div class="flex justify-between text-xs font-semibold text-slate-400 mb-4">
-                            <span>已收 $${feeCollected.toLocaleString()}</span>
-                            <span>總應收 $${feeExpect.toLocaleString()}</span>
-                        </div>
-                    </div>
-                    <div class="space-y-3">
-                        <div class="w-full bg-slate-200 h-2.5 rounded-full overflow-hidden">
-                            <div class="bg-indigo-600 h-full rounded-full transition-all duration-300" style="width: ${pct}%"></div>
-                        </div>
-                        <div class="flex justify-between items-center text-xs">
-                            <span class="text-slate-500 font-semibold">${pct}% 達成率</span>
-                            <span class="text-slate-400 font-medium">已付 ${feePaidStudents} 人 / 部分 ${feePartialStudents} 人</span>
-                        </div>
-                    </div>
-                `;
-                container.appendChild(card);
-            });
-        }
-
-        // ==========================================
-        // TAB 2: STUDENTS ROSTER LOGIC
-        // ==========================================
-        function renderStudents() {
-            const listContainer = document.getElementById('student-table-body');
-            const emptyState = document.getElementById('student-empty-state');
-            const filterClass = document.getElementById('student-filter-class').value;
-            const searchKeyword = document.getElementById('student-search').value.trim().toLowerCase();
-
-            listContainer.innerHTML = '';
-
-            let filtered = state.students;
-            
-            if (filterClass !== 'all') {
-                filtered = filtered.filter(s => s.class === filterClass);
-            }
-            if (searchKeyword) {
-                filtered = filtered.filter(s => s.name.toLowerCase().includes(searchKeyword));
-            }
-
-            // Sort students by Class then seat no
-            filtered.sort((a, b) => {
-                if (a.class !== b.class) return a.class.localeCompare(b.class);
-                return parseInt(a.seatNo || 0) - parseInt(b.seatNo || 0);
-            });
-
-            if (filtered.length === 0) {
-                emptyState.classList.remove('hidden');
-                return;
-            }
-            emptyState.classList.add('hidden');
-
-            filtered.forEach(s => {
-                const tr = document.createElement('tr');
-                tr.className = "hover:bg-slate-50 transition border-b border-slate-100";
-                tr.innerHTML = `
-                    <td class="py-3 px-4 font-bold text-slate-700">${s.class}</td>
-                    <td class="py-3 px-4 text-slate-500 font-medium">${s.seatNo || ''}</td>
-                    <td class="py-3 px-4 font-bold text-slate-800">${s.name}</td>
-                    <td class="py-3 px-4 text-right space-x-1 whitespace-nowrap">
-                        <button onclick="editStudent('${s.id}')" class="text-indigo-600 hover:text-indigo-800 p-1 rounded hover:bg-indigo-50 transition" title="編輯">
-                            <i data-lucide="edit-3" class="w-4 h-4 inline"></i>
-                        </button>
-                        <button onclick="deleteStudent('${s.id}')" class="text-rose-500 hover:text-rose-700 p-1 rounded hover:bg-rose-50 transition" title="刪除">
-                            <i data-lucide="trash-2" class="w-4 h-4 inline"></i>
-                        </button>
-                    </td>
-                `;
-                listContainer.appendChild(tr);
-            });
-
-            lucide.createIcons();
-        }
-
-        function saveStudent(e) {
-            e.preventDefault();
-            const editId = document.getElementById('student-edit-id').value;
-            const cls = document.getElementById('student-class').value.trim();
-            const seat = String(document.getElementById('student-seat').value).padStart(2, '0');
-            const name = document.getElementById('student-name').value.trim();
-
-            if (!cls || !name) {
-                showNotification("班級與姓名不能為空", "error");
-                return;
-            }
-
-            if (editId) {
-                // Update
-                const idx = state.students.findIndex(s => s.id === editId);
-                if (idx !== -1) {
-                    state.students[idx] = { id: editId, class: cls, seatNo: seat, name: name };
-                    showNotification(`已更新 ${name} 的資料`);
-                }
-            } else {
-                // Check if seat no duplicated in the class
-                const isDup = state.students.some(s => s.class === cls && s.seatNo === seat);
-                if (isDup) {
-                    showNotification("該班級中已存在此座號", "warning");
-                }
-                
-                // Add
-                const newId = 's_' + Date.now();
-                state.students.push({ id: newId, class: cls, seatNo: seat, name: name });
-                showNotification(`成功新增學生 ${name}`);
-            }
-
-            cancelStudentEdit();
-            saveToLocalStorage();
-            renderAll();
-        }
-
-        function editStudent(id) {
-            const s = state.students.find(s => s.id === id);
-            if (!s) return;
-
-            document.getElementById('student-edit-id').value = s.id;
-            document.getElementById('student-class').value = s.class;
-            document.getElementById('student-seat').value = parseInt(s.seatNo);
-            document.getElementById('student-name').value = s.name;
-
-            document.getElementById('student-editor-title').innerHTML = `<i data-lucide="edit-3" class="text-indigo-500"></i> 修改學生資料`;
-            document.getElementById('btn-student-cancel').classList.remove('hidden');
-            lucide.createIcons();
-        }
-
-        function cancelStudentEdit() {
-            document.getElementById('student-form').reset();
-            document.getElementById('student-edit-id').value = '';
-            document.getElementById('student-editor-title').innerHTML = `<i data-lucide="user-plus" class="text-indigo-500"></i> 新增學生資料`;
-            document.getElementById('btn-student-cancel').classList.add('hidden');
-            lucide.createIcons();
-        }
-
-        function deleteStudent(id) {
-            const s = state.students.find(st => st.id === id);
-            if (!s) return;
-
-            if (confirm(`確定要刪除學生「${s.name}」嗎？這將會同步清除該生的所有繳費紀錄！`)) {
-                state.students = state.students.filter(st => st.id !== id);
-                // Clean up payments
-                Object.keys(state.payments).forEach(key => {
-                    if (key.startsWith(`${id}_`)) {
-                        delete state.payments[key];
-                    }
-                });
-                showNotification(`已刪除 ${s.name} 及其繳費紀錄`, 'warning');
-                saveToLocalStorage();
-                renderAll();
-            }
-        }
-
-        // Optimized Class-First Bulk Text Importer
-        function bulkImportStudents() {
-            const dropdownClass = document.getElementById('bulk-class-select').value;
-            let targetClass = document.getElementById('bulk-class-input').value.trim();
-
-            // Check if class specified
-            if (dropdownClass !== "") {
-                targetClass = dropdownClass;
-            }
-
-            if (!targetClass) {
-                showNotification("請先指定或手動輸入欲匯入的班級名稱！", "error");
-                return;
-            }
-
-            const rawText = document.getElementById('student-bulk-text').value.trim();
-            if (!rawText) {
-                showNotification("請先輸入欲匯入的座號與姓名名冊！", "warning");
-                return;
-            }
-
-            const lines = rawText.split('\n');
-            let successCount = 0;
-            let dupCount = 0;
-
-            lines.forEach(line => {
-                const parts = line.trim().split(/\s+/);
-                if (parts.length >= 2) {
-                    const seat = parts[0].padStart(2, '0');
-                    // Combine rest parts as name in case there are middle names or spaces in names
-                    const name = parts.slice(1).join(" ");
-                    
-                    const isDup = state.students.some(s => s.class === targetClass && s.seatNo === seat);
-                    if (!isDup) {
-                        const newId = 's_' + Math.random().toString(36).substr(2, 9);
-                        state.students.push({
-                            id: newId,
-                            class: targetClass,
-                            seatNo: seat,
-                            name: name
-                        });
-                        successCount++;
-                    } else {
-                        dupCount++;
-                    }
-                }
-            });
-
-            if (successCount > 0) {
-                showNotification(`已成功匯入 ${successCount} 位學生至「${targetClass}」班級！`);
-                document.getElementById('student-bulk-text').value = '';
-                saveToLocalStorage();
-                renderAll();
-            } else if (dupCount > 0) {
-                showNotification(`名冊內座號與現有學生衝突，未新增任何資料。`, "warning");
-            } else {
-                showNotification("無法識別名冊格式，請確保每行有「座號 姓名」格式。", "error");
-            }
-        }
-
-        // ==========================================
-        // BATCH OPERATIONS FOR RENDERED STUDENTS
-        // ==========================================
-        function batchRenameClass() {
-            const activeClass = document.getElementById('student-filter-class').value;
-            const newClassName = document.getElementById('batch-rename-input').value.trim();
-
-            if (activeClass === 'all' || !activeClass) {
-                showNotification("請先篩選出要修改的目標班級", "warning");
-                return;
-            }
-            if (!newClassName) {
-                showNotification("請填寫新的班級名稱", "error");
-                return;
-            }
-            if (activeClass === newClassName) {
-                showNotification("新舊班級名稱相同，無須修改", "warning");
-                return;
-            }
-
-            const classCount = state.students.filter(s => s.class === activeClass).length;
-            if (confirm(`確定要將「${activeClass}」班級全部 (${classCount} 人) 變更名稱為「${newClassName}」嗎？`)) {
-                state.students.forEach(s => {
-                    if (s.class === activeClass) {
-                        s.class = newClassName;
-                    }
-                });
-                
-                showNotification(`已完成！成功將「${activeClass}」班級更名為「${newClassName}」`);
-                // Auto switch filter to the new class name
-                document.getElementById('student-filter-class').value = newClassName;
-                saveToLocalStorage();
-                renderAll();
-            }
-        }
-
-        function batchDeleteClass() {
-            const activeClass = document.getElementById('student-filter-class').value;
-            if (activeClass === 'all' || !activeClass) {
-                showNotification("請先篩選出要刪除的目標班級", "warning");
-                return;
-            }
-
-            const targetStudents = state.students.filter(s => s.class === activeClass);
-            const classCount = targetStudents.length;
-
-            if (confirm(`警告！\n確認要「刪除整個 ${activeClass}」嗎？\n這將一併刪除該班級內全部 ${classCount} 名學生、以及他們的所有收費與繳費紀錄，本動作無法撤銷！`)) {
-                // Get list of student IDs in this class to delete their payments
-                const targetIds = targetStudents.map(s => s.id);
-                
-                // Clean students
-                state.students = state.students.filter(s => s.class !== activeClass);
-                
-                // Clean up related payments
-                Object.keys(state.payments).forEach(key => {
-                    const [studentId] = key.split('_');
-                    if (targetIds.includes(studentId)) {
-                        delete state.payments[key];
-                    }
-                });
-
-                showNotification(`已成功刪除 ${activeClass} 整班 ${classCount} 人名單與收費紀錄`, "warning");
-                document.getElementById('student-filter-class').value = 'all';
-                saveToLocalStorage();
-                renderAll();
-            }
-        }
-
-
-        // ==========================================
-        // TAB 3: FEE ITEMS LOGIC
-        // ==========================================
-        function renderFees() {
-            const container = document.getElementById('fee-list-container');
-            const emptyState = document.getElementById('fee-empty-state');
-            container.innerHTML = '';
-
-            if (state.feeItems.length === 0) {
-                emptyState.classList.remove('hidden');
-                return;
-            }
-            emptyState.classList.add('hidden');
-
-            state.feeItems.forEach(fee => {
-                const card = document.createElement('div');
-                card.className = "bg-slate-50 border border-slate-100 p-5 rounded-2xl flex items-center justify-between";
-                card.innerHTML = `
-                    <div class="space-y-1">
-                        <span class="text-xs font-bold text-indigo-500 uppercase tracking-wider">應收名目</span>
-                        <h5 class="font-bold text-slate-800 text-base">${fee.name}</h5>
-                        <p class="font-black text-indigo-600 text-sm">預設 $${fee.amount.toLocaleString()}</p>
-                    </div>
-                    <div class="flex gap-1.5">
-                        <button onclick="editFee('${fee.id}')" class="p-2 text-indigo-600 bg-white hover:bg-indigo-50 border border-slate-150 rounded-xl transition shadow-sm" title="編輯項目">
-                            <i data-lucide="edit-3" class="w-4 h-4"></i>
-                        </button>
-                        <button onclick="deleteFee('${fee.id}')" class="p-2 text-rose-500 bg-white hover:bg-rose-50 border border-slate-150 rounded-xl transition shadow-sm" title="刪除項目">
-                            <i data-lucide="trash-2" class="w-4 h-4"></i>
-                        </button>
-                    </div>
-                `;
-                container.appendChild(card);
-            });
-
-            lucide.createIcons();
-        }
-
-        function saveFee(e) {
-            e.preventDefault();
-            const editId = document.getElementById('fee-edit-id').value;
-            const name = document.getElementById('fee-name').value.trim();
-            const amount = parseFloat(document.getElementById('fee-amount').value);
-
-            if (!name || isNaN(amount) || amount < 0) {
-                showNotification("請輸入正確的名稱與金額", "error");
-                return;
-            }
-
-            if (editId) {
-                const idx = state.feeItems.findIndex(f => f.id === editId);
-                if (idx !== -1) {
-                    const oldAmount = state.feeItems[idx].amount;
-                    state.feeItems[idx] = { id: editId, name: name, amount: amount };
-                    
-                    // Automatically adjust payments with default amounts to the new default
-                    state.students.forEach(s => {
-                        const pKey = `${s.id}_${editId}`;
-                        const pay = state.payments[pKey];
-                        const payStatus = (pay && typeof pay.status === 'string') ? pay.status : '未繳';
-                        if (pay) {
-                            // If the payment had default amount, update target and check logic
-                            if (typeof pay.targetAmount === 'undefined' || pay.targetAmount === oldAmount) {
-                                pay.targetAmount = amount;
-                                if (payStatus === '已繳清' || payStatus.includes('已繳清')) {
-                                    pay.status = '已繳清';
-                                    pay.paidAmount = amount;
-                                } else if (pay.paidAmount > amount) {
-                                    pay.status = '已繳清';
-                                    pay.paidAmount = amount;
-                                }
-                            }
-                        }
-                    });
-                    showNotification(`已更新費用項目 ${name}`);
-                }
-            } else {
-                const newId = 'f_' + Date.now();
-                state.feeItems.push({ id: newId, name: name, amount: amount });
-                showNotification(`已新增費用項目 ${name}`);
-            }
-
-            cancelFeeEdit();
-            saveToLocalStorage();
-            renderAll();
-        }
-
-        function editFee(id) {
-            const fee = state.feeItems.find(f => f.id === id);
-            if (!fee) return;
-
-            document.getElementById('fee-edit-id').value = fee.id;
-            document.getElementById('fee-name').value = fee.name;
-            document.getElementById('fee-amount').value = fee.amount;
-
-            document.getElementById('fee-editor-title').innerHTML = `<i data-lucide="edit-3" class="text-indigo-500"></i> 修改費用項目`;
-            document.getElementById('btn-fee-cancel').classList.remove('hidden');
-            lucide.createIcons();
-        }
-
-        function cancelFeeEdit() {
-            document.getElementById('fee-form').reset();
-            document.getElementById('fee-edit-id').value = '';
-            document.getElementById('fee-editor-title').innerHTML = `<i data-lucide="plus-circle" class="text-indigo-500"></i> 新增費用項目`;
-            document.getElementById('btn-fee-cancel').classList.add('hidden');
-            lucide.createIcons();
-        }
-
-        function deleteFee(id) {
-            const fee = state.feeItems.find(f => f.id === id);
-            if (!fee) return;
-
-            if (confirm(`確認要刪除「${fee.name}」收費名目嗎？此動作將同步移除所有學生的這筆收費登記狀態！`)) {
-                state.feeItems = state.feeItems.filter(f => f.id !== id);
-                // Clean payments of this fee item
-                Object.keys(state.payments).forEach(key => {
-                    if (key.endsWith(`_${id}`)) {
-                        delete state.payments[key];
-                    }
-                });
-                showNotification(`已移除費用名目 ${fee.name}`, "warning");
-                saveToLocalStorage();
-                renderAll();
-            }
-        }
-
-        // ==========================================
-        // TAB 4: FEE REGISTRATION MATRIX LOGIC
-        // ==========================================
-        function renderMatrix() {
-            const headerRow = document.getElementById('matrix-header-row');
-            const tbody = document.getElementById('matrix-body');
-            const emptyState = document.getElementById('matrix-empty-state');
-
-            headerRow.innerHTML = '';
-            tbody.innerHTML = '';
-
-            if (state.students.length === 0 || state.feeItems.length === 0) {
-                emptyState.classList.remove('hidden');
-                document.getElementById('matrix-scroll-container').classList.add('hidden');
-                return;
-            }
-            emptyState.classList.add('hidden');
-            document.getElementById('matrix-scroll-container').classList.remove('hidden');
-
-            // 1. Get Filters to calculate contextual statistics
-            const filterClass = document.getElementById('matrix-filter-class').value;
-            const filterStatus = document.getElementById('matrix-filter-status').value;
-            const searchKeyword = document.getElementById('matrix-search').value.trim().toLowerCase();
-
-            // Filter & Sort Students first so stats reflect the active filter view dynamically
-            let filteredStudents = [...state.students];
-            if (filterClass !== 'all') {
-                filteredStudents = filteredStudents.filter(s => s.class === filterClass);
-            }
-            if (searchKeyword) {
-                filteredStudents = filteredStudents.filter(s => s.name.toLowerCase().includes(searchKeyword));
-            }
-
-            filteredStudents.sort((a, b) => {
-                if (a.class !== b.class) return a.class.localeCompare(b.class);
-                return parseInt(a.seatNo || 0) - parseInt(b.seatNo || 0);
-            });
-
-            // If filtering by fee-level payment status
-            if (filterStatus !== 'all') {
-                filteredStudents = filteredStudents.filter(s => {
-                    return state.feeItems.some(f => {
-                        const key = `${s.id}_${f.id}`;
-                        const pay = state.payments[key];
-                        const payStatus = (pay && typeof pay.status === 'string') ? pay.status : '未繳';
-                        return payStatus.includes(filterStatus);
-                    });
-                });
-            }
-
-            // 2. Render Table Header with Embedded Dynamic Column Statistics (SHRUNK LEFT COLS)
-            headerRow.innerHTML = `
-                <th class="py-4 px-3 font-bold text-slate-500 text-xs uppercase text-left sticky left-0 bg-slate-50 z-20 shadow-[2px_0_5px_rgba(0,0,0,0.05)] border-b border-slate-200" style="width: 90px; vertical-align: top;">
-                    <div class="pt-1">班級</div>
-                </th>
-                <th class="py-4 px-2 font-bold text-slate-500 text-xs uppercase text-left sticky left-[90px] bg-slate-50 z-20 border-b border-slate-200" style="width: 50px; vertical-align: top;">
-                    <div class="pt-1">座號</div>
-                </th>
-                <th class="py-4 px-3 font-bold text-slate-500 text-xs uppercase text-left sticky left-[140px] bg-slate-50 z-20 shadow-[2px_0_5px_rgba(0,0,0,0.05)] border-b border-slate-200" style="width: 90px; vertical-align: top;">
-                    <div class="pt-1">姓名</div>
-                </th>
-            `;
-
-            state.feeItems.forEach(fee => {
-                // Calculate dynamic statistics based on current active student list, respecting individual expected targetAmount
-                let collected = 0;
-                let totalExpect = 0;
-                let paidCount = 0;
-                let partialCount = 0;
-                let unpaidCount = 0;
-
-                filteredStudents.forEach(s => {
-                    const key = `${s.id}_${fee.id}`;
-                    const pay = state.payments[key];
-                    const expectedAmount = (pay && typeof pay.targetAmount !== 'undefined' && !isNaN(parseFloat(pay.targetAmount))) ? parseFloat(pay.targetAmount) : parseFloat(fee.amount);
-                    const payStatus = (pay && typeof pay.status === 'string') ? pay.status : '未繳';
-                    
-                    totalExpect += expectedAmount;
-                    if (pay) {
-                        collected += parseFloat(pay.paidAmount) || 0;
-                        if (payStatus === '已繳清' || payStatus.includes('已繳清')) paidCount++;
-                        else if (payStatus === '部分繳納' || payStatus.includes('部分繳納')) partialCount++;
-                        else unpaidCount++;
-                    } else {
-                        unpaidCount++;
-                    }
-                });
-
-                const pct = totalExpect > 0 ? Math.round((collected / totalExpect) * 100) : 0;
-
-                const th = document.createElement('th');
-                th.className = "py-3 px-4 text-center border-l border-slate-200/60 border-b border-slate-200 bg-slate-50/95";
-                th.style.width = "210px";
-                th.style.verticalAlign = "top";
-                
-                // Formulate statistical content container under the column name
-                th.innerHTML = `
-                    <div class="space-y-1">
-                        <p class="truncate font-black text-slate-800 text-sm" title="${fee.name}">${fee.name}</p>
-                        <p class="text-indigo-600 font-bold text-[11px]">預設單價 $${fee.amount}</p>
-                        
-                        <!-- Column Statistics Box -->
-                        <div class="mt-2.5 p-2 bg-white/80 rounded-xl border border-slate-200/50 text-left space-y-1 font-medium shadow-sm">
-                            <div class="flex justify-between text-[10px] text-slate-500">
-                                <span>已收: <strong class="text-emerald-600 text-[11px] font-bold">$${collected.toLocaleString()}</strong></span>
-                                <span>/ $${totalExpect.toLocaleString()}</span>
-                            </div>
-                            
-                            <!-- Mini Progress Bar -->
-                            <div class="w-full bg-slate-100 h-1.5 rounded-full overflow-hidden">
-                                <div class="bg-indigo-600 h-full rounded-full transition-all duration-300" style="width: ${pct}%"></div>
-                            </div>
-                            
-                            <!-- Micro counters -->
-                            <div class="flex justify-between items-center text-[9px] text-slate-400 pt-0.5">
-                                <span class="text-indigo-600 font-bold">${pct}% 達成</span>
-                                <span class="space-x-1">
-                                    <span class="text-emerald-600">✔ ${paidCount}</span>
-                                    <span class="text-amber-500">⚠ ${partialCount}</span>
-                                    <span class="text-slate-400">✘ ${unpaidCount}</span>
-                                </span>
-                            </div>
-                        </div>
-                    </div>
-                `;
-                headerRow.appendChild(th);
-            });
-
-            // 3. Render Student Rows (SHRUNK LEFT COLS + AUTO TRUNCATE FOR CLEAN LOOK)
-            filteredStudents.forEach(s => {
-                const tr = document.createElement('tr');
-                tr.className = "hover:bg-slate-50 transition border-b border-slate-100 group";
-                
-                // Static fields with horizontal lock style shadows and narrower widths
-                tr.innerHTML = `
-                    <td class="py-3.5 px-3 font-bold text-slate-700 sticky left-0 bg-white group-hover:bg-slate-50 z-10 shadow-[2px_0_5px_rgba(0,0,0,0.02)] truncate" style="max-width: 90px;" title="${s.class}">${s.class}</td>
-                    <td class="py-3.5 px-2 text-slate-400 font-medium sticky left-[90px] bg-white group-hover:bg-slate-50 z-10 text-center" style="max-width: 50px;">${s.seatNo || ''}</td>
-                    <td class="py-3.5 px-3 font-bold text-slate-800 sticky left-[140px] bg-white group-hover:bg-slate-50 z-10 shadow-[2px_0_5px_rgba(0,0,0,0.02)] truncate" style="max-width: 90px;" title="${s.name}">${s.name}</td>
-                `;
-
-                // Interactive Payment Cells
-                state.feeItems.forEach(fee => {
-                    const key = `${s.id}_${fee.id}`;
-                    const pay = state.payments[key] || { status: '未繳', paidAmount: 0, targetAmount: fee.amount, paidAt: null };
-                    const expectedAmount = typeof pay.targetAmount !== 'undefined' ? parseFloat(pay.targetAmount) : parseFloat(fee.amount);
-                    const payStatus = (pay && typeof pay.status === 'string') ? pay.status : '未繳';
-                    
-                    const td = document.createElement('td');
-                    td.className = "py-2.5 px-3 border-l border-slate-100 text-center align-middle";
-                    
-                    let badgeClass = '';
-                    let label = '';
-
-                    if (payStatus === '已繳清' || payStatus.includes('已繳清')) {
-                        badgeClass = 'bg-emerald-500/10 text-emerald-600 hover:bg-emerald-500/20';
-                        // Check if student paid a custom amount
-                        const customFlag = expectedAmount !== fee.amount ? ` <span class="text-[9px] bg-emerald-200/50 px-1 py-0.5 rounded text-emerald-800">特 $${expectedAmount}</span>` : '';
-                        
-                        // Append dynamically captured timestamp below status
-                        const timeStr = pay.paidAt ? `<span class="text-[9px] text-emerald-500/80 block font-normal mt-0.5"><i class="inline-block w-2.5 h-2.5" data-lucide="clock"></i> ${pay.paidAt}</span>` : '';
-                        
-                        label = `
-                            <span class="flex flex-col items-center justify-center">
-                                <span class="flex items-center gap-1"><i data-lucide="check" class="w-3.5 h-3.5"></i> 已付清${customFlag}</span>
-                                ${timeStr}
-                            </span>`;
-                    } else if (payStatus === '部分繳納' || payStatus.includes('部分繳納')) {
-                        badgeClass = 'bg-amber-500/10 text-amber-600 hover:bg-amber-500/20';
-                        label = `<span class="flex items-center justify-center gap-1 text-[11px]"><i data-lucide="alert-circle" class="w-3.5 h-3.5"></i> $${pay.paidAmount} / $${expectedAmount}</span>`;
-                    } else {
-                        badgeClass = 'bg-slate-100 text-slate-400 hover:bg-slate-200';
-                        // Show customized target amount even if unpaid
-                        const customFlag = expectedAmount !== fee.amount ? ` ($${expectedAmount})` : '';
-                        label = `<span class="flex items-center justify-center gap-1"><i data-lucide="minus" class="w-3.5 h-3.5"></i> 未繳${customFlag}</span>`;
-                    }
-
-                    td.innerHTML = `
-                        <button onclick="openPaymentModal('${s.id}', '${fee.id}')" class="w-full py-2.5 px-1 rounded-xl text-xs font-bold transition duration-150 ${badgeClass}">
-                            ${label}
-                        </button>
-                    `;
-                    tr.appendChild(td);
-                });
-
-                tbody.appendChild(tr);
-            });
-
-            lucide.createIcons();
-        }
-
-        // ==========================================
-        // PAYMENT POPUP MODAL CONTROL
-        // ==========================================
-        let activeModalStudentId = null;
-        let activeModalFeeId = null;
-        let activeModalStatusVal = '未繳';
-
-        // Open Dialog
-        function openPaymentModal(studentId, feeId) {
-            const student = state.students.find(s => s.id === studentId);
-            const fee = state.feeItems.find(f => f.id === feeId);
-            if (!student || !fee) return;
-
-            activeModalStudentId = studentId;
-            activeModalFeeId = feeId;
-
-            const record = state.payments[`${studentId}_${feeId}`] || { status: '未繳', paidAmount: 0, targetAmount: fee.amount, paidAt: null };
-            const recordStatus = (record && typeof record.status === 'string') ? record.status : '未繳';
-            
-            // Normalize status to clean values on open (Using type-safe checks)
-            if (recordStatus.includes('已繳清')) activeModalStatusVal = '已繳清';
-            else if (recordStatus.includes('部分繳納')) activeModalStatusVal = '部分繳納';
-            else activeModalStatusVal = '未繳';
-
-            // Header UI Info
-            document.getElementById('modal-student-name').innerText = `${student.class} - ${student.seatNo}號 ${student.name}`;
-            document.getElementById('modal-fee-name').innerText = fee.name;
-            
-            // Set dynamic target amount in popup
-            const expectedTarget = typeof record.targetAmount !== 'undefined' ? parseFloat(record.targetAmount) : parseFloat(fee.amount);
-            document.getElementById('modal-target-amount').value = expectedTarget;
-            
-            // Set input value
-            document.getElementById('modal-paid-amount').value = record.paidAmount || 0;
-            
-            // Update partial warning text
-            onModalTargetAmountChange();
-
-            // Set buttons active state
-            updateModalStatusButtons();
-
-            // Display
-            document.getElementById('payment-modal').className = "fixed inset-0 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center z-50";
-            lucide.createIcons();
-        }
-
-        function closePaymentModal() {
-            document.getElementById('payment-modal').className = "fixed inset-0 bg-slate-900/40 backdrop-blur-sm hidden items-center justify-center z-50";
-        }
-
-        function restoreModalTargetAmount() {
-            const fee = state.feeItems.find(f => f.id === activeModalFeeId);
-            if (!fee) return;
-            document.getElementById('modal-target-amount').value = fee.amount;
-            onModalTargetAmountChange();
-        }
-
-        function onModalTargetAmountChange() {
-            const currentTarget = parseFloat(document.getElementById('modal-target-amount').value) || 0;
-            document.getElementById('modal-partial-warning').innerText = `最高可填 $${currentTarget}`;
-            
-            // Auto capping check for partial payment input if it exceeds newly modified target
-            const currentPaid = parseFloat(document.getElementById('modal-paid-amount').value) || 0;
-            if (currentPaid > currentTarget && activeModalStatusVal === '部分繳納') {
-                document.getElementById('modal-paid-amount').value = currentTarget;
-            }
-        }
-
-        function setModalStatus(status) {
-            activeModalStatusVal = status;
-            updateModalStatusButtons();
-        }
-
-        function updateModalStatusButtons() {
-            const paidBtn = document.getElementById('btn-status-paid');
-            const partBtn = document.getElementById('btn-status-partial');
-            const unpBtn = document.getElementById('btn-status-unpaid');
-            const partialBox = document.getElementById('modal-partial-amount-box');
-            const amtInput = document.getElementById('modal-paid-amount');
-            const targetAmountInput = document.getElementById('modal-target-amount');
-            const timeBox = document.getElementById('modal-paid-time-box');
-            const timeVal = document.getElementById('modal-paid-time-val');
-
-            // Reset Styles
-            paidBtn.className = "py-3 px-4 rounded-xl border text-center transition font-semibold text-xs flex flex-col items-center gap-1.5 border-slate-200 text-slate-500 hover:bg-slate-50";
-            partBtn.className = "py-3 px-4 rounded-xl border text-center transition font-semibold text-xs flex flex-col items-center gap-1.5 border-slate-200 text-slate-500 hover:bg-slate-50";
-            unpBtn.className = "py-3 px-4 rounded-xl border text-center transition font-semibold text-xs flex flex-col items-center gap-1.5 border-slate-200 text-slate-500 hover:bg-slate-50";
-
-            partialBox.classList.add('hidden');
-
-            const currentTarget = parseFloat(targetAmountInput.value) || 0;
-
-            if (activeModalStatusVal === '已繳清') {
-                paidBtn.className = "py-3 px-4 rounded-xl border-2 text-center transition font-black text-xs flex flex-col items-center gap-1.5 border-emerald-500 bg-emerald-50 text-emerald-700";
-                amtInput.value = currentTarget;
-            } else if (activeModalStatusVal === '部分繳納') {
-                partBtn.className = "py-3 px-4 rounded-xl border-2 text-center transition font-black text-xs flex flex-col items-center gap-1.5 border-amber-500 bg-amber-50 text-amber-700";
-                partialBox.classList.remove('hidden');
-            } else if (activeModalStatusVal === '未繳') {
-                unpBtn.className = "py-3 px-4 rounded-xl border-2 text-center transition font-black text-xs flex flex-col items-center gap-1.5 border-slate-600 bg-slate-100 text-slate-800";
-                amtInput.value = 0;
-            }
-
-            // Update timestamp details preview inside dialog (Using safe string-checking)
-            const key = `${activeModalStudentId}_${activeModalFeeId}`;
-            const record = state.payments[key];
-            const recordStatus = (record && typeof record.status === 'string') ? record.status : '未繳';
-
-            if (activeModalStatusVal === '已繳清') {
-                timeBox.classList.remove('hidden');
-                if (record && recordStatus.includes('已繳清') && record.paidAt) {
-                    timeVal.innerHTML = `<span class="flex items-center gap-1 text-emerald-700"><i data-lucide="clock" class="w-3.5 h-3.5"></i> ${record.paidAt}</span>`;
-                } else {
-                    timeVal.innerHTML = `<span class="text-indigo-600 italic">儲存後自動記錄當前時間</span>`;
-                }
-            } else {
-                timeBox.classList.add('hidden');
-            }
-            lucide.createIcons();
-        }
-
-        // Percentage fill helper
-        function fillPartialPct(pct) {
-            const currentTarget = parseFloat(document.getElementById('modal-target-amount').value) || 0;
-            document.getElementById('modal-paid-amount').value = Math.round(currentTarget * pct);
-        }
-
-        function savePaymentModal() {
-            const fee = state.feeItems.find(f => f.id === activeModalFeeId);
-            if (!fee) return;
-
-            const finalTarget = parseFloat(document.getElementById('modal-target-amount').value);
-            if (isNaN(finalTarget) || finalTarget < 0) {
-                showNotification("應繳金額不合規範", "error");
-                return;
-            }
-
-            let finalPaid = 0;
-            let currentStatus = activeModalStatusVal;
-            
-            if (activeModalStatusVal === '已繳清') {
-                finalPaid = finalTarget;
-            } else if (activeModalStatusVal === '未繳') {
-                finalPaid = 0;
-            } else if (activeModalStatusVal === '部分繳納') {
-                finalPaid = parseFloat(document.getElementById('modal-paid-amount').value) || 0;
-                
-                if (finalPaid <= 0) {
-                    currentStatus = '未繳';
-                    finalPaid = 0;
-                } else if (finalPaid >= finalTarget) {
-                    currentStatus = '合格_已繳清';
-                    currentStatus = '已繳清';
-                    finalPaid = finalTarget;
-                }
-            }
-
-            // Dynamic date & time recording logic on confirm (Type-Safe string check)
-            const key = `${activeModalStudentId}_${activeModalFeeId}`;
-            const existing = state.payments[key];
-            const existingStatus = (existing && typeof existing.status === 'string') ? existing.status : '未繳';
-            let finalPaidAt = (existing && existing.paidAt) ? existing.paidAt : null;
-
-            if (currentStatus === '已繳清') {
-                // Keep prior timestamp if status was already '已繳清'
-                if (existing && (existingStatus === '已繳清' || existingStatus.includes('已繳清')) && existing.paidAt) {
-                    finalPaidAt = existing.paidAt;
-                } else {
-                    // Update timestamp to current date/time
-                    const now = new Date();
-                    const year = now.getFullYear();
-                    const month = String(now.getMonth() + 1).padStart(2, '0');
-                    const date = String(now.getDate()).padStart(2, '0');
-                    const hours = String(now.getHours()).padStart(2, '0');
-                    const minutes = String(now.getMinutes()).padStart(2, '0');
-                    finalPaidAt = `${year}/${month}/${date} ${hours}:${minutes}`;
-                }
-            } else {
-                // Clear timestamp if switched away from Paid status
-                finalPaidAt = null;
-            }
-
-            // Save record (including the customized expected targetAmount & paidAt timestamp!)
-            state.payments[key] = {
-                status: currentStatus,
-                paidAmount: finalPaid,
-                targetAmount: finalTarget,
-                paidAt: finalPaidAt
-            };
-
-            closePaymentModal();
-            saveToLocalStorage();
-            renderAll();
-            showNotification("繳費與應繳金額登記已成功更新");
-        }
-
-        // ==========================================
-        // TAB 5: BACKUP, IMPORT & EXPORT
-        // ==========================================
-        function exportToExcel() {
-            if (state.students.length === 0) {
-                showNotification("沒有任何學生數據可以匯出", "warning");
-                return;
-            }
-
-            // Construct CSV structure (Compatible with MS Excel - include BOM prefix)
-            let csvContent = "\uFEFF"; // UTF-8 BOM
-            
-            // Header (Added Paid Time)
-            let headers = ["班級", "座號", "姓名"];
-            state.feeItems.forEach(fee => {
-                headers.push(`${fee.name}_應繳總額`, `${fee.name}_繳費狀態`, `${fee.name}_已付金額`, `${fee.name}_繳清時間`);
-            });
-            csvContent += headers.join(",") + "\n";
-
-            // Row per student
-            state.students.forEach(s => {
-                let row = [s.class, s.seatNo, s.name];
-                state.feeItems.forEach(fee => {
-                    const key = `${s.id}_${fee.id}`;
-                    const pay = state.payments[key] || { status: "未繳", paidAmount: 0, targetAmount: fee.amount, paidAt: "" };
-                    const expectedAmount = typeof pay.targetAmount !== 'undefined' ? pay.targetAmount : fee.amount;
-                    const paidAt = pay.paidAt || "";
-                    row.push(expectedAmount, pay.status, pay.paidAmount, paidAt);
-                });
-                csvContent += row.join(",") + "\n";
-            });
-
-            // Create Downloadable Element
-            const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-            const url = URL.createObjectURL(blob);
-            const link = document.createElement("a");
-            
-            const now = new Date();
-            const dateStr = `${now.getFullYear()}${String(now.getMonth()+1).padStart(2, '0')}${String(now.getDate()).padStart(2, '0')}`;
-            
-            link.setAttribute("href", url);
-            link.setAttribute("download", `學生繳費登記表_${dateStr}.csv`);
-            link.style.visibility = 'hidden';
-            document.body.appendChild(link);
-            link.click();
-            document.body.removeChild(link);
-
-            showNotification("Excel CSV 繳費清單已匯出！");
-        }
-
-        function exportJSONBackup() {
-            const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(state));
-            const dlAnchorElem = document.createElement('a');
-            dlAnchorElem.setAttribute("href",     dataStr     );
-            dlAnchorElem.setAttribute("download", `收費系統數據備份_${Date.now()}.json`);
-            dlAnchorElem.click();
-            showNotification("全系統資料庫備份下載成功");
-        }
-
-        // Trigger parser
-        function triggerImport() {
-            const fileInput = document.getElementById('import-file');
-            if (fileInput.files.length === 0) {
-                showNotification("請先選擇上傳的 JSON 備份或 CSV 檔案", "warning");
-                return;
-            }
-
-            const file = fileInput.files[0];
-            const reader = new FileReader();
-
-            if (file.name.endsWith('.json')) {
-                reader.onload = function(e) {
-                    try {
-                        const parsed = JSON.parse(e.target.result);
-                        if (parsed.students && parsed.feeItems && parsed.payments) {
-                            state = parsed;
-                            saveToLocalStorage();
-                            renderAll();
-                            showNotification("成功從備份恢復完整系統數據！");
-                            fileInput.value = '';
-                        } else {
-                            showNotification("格式不符合標準系統備份檔案", "error");
-                        }
-                    } catch (err) {
-                        showNotification("無法解析檔案內容", "error");
-                    }
-                };
-                reader.readAsText(file);
-            } else if (file.name.endsWith('.csv')) {
-                reader.onload = function(e) {
-                    try {
-                        parseCSVImport(e.target.result);
-                        fileInput.value = '';
-                    } catch (err) {
-                        showNotification("CSV 格式不正確或毀損", "error");
-                    }
-                };
-                reader.readAsText(file);
-            }
-        }
-
-        // Dynamic status terminology alignment (Supports custom terms like "已收", "Y", "已付")
-        function normalizeImportStatus(status) {
-            if (!status || typeof status !== 'string') return '未繳';
-            status = status.trim();
-            if (status === '已繳清' || status === '已付清' || status === '已收' || status === '已繳' || status === '已付' || status === 'Y' || status === 'y' || status === 'yes' || status === '1') {
-                return '已繳清';
-            }
-            if (status === '部分繳納' || status === '部分' || status === '部分繳' || status === '部分付' || status === '部分收') {
-                return '部分繳納';
-            }
-            return '未繳'; // Default fallback
-        }
-
-        // Safe CSV parser that respects double-quotes and prevents column index shifting
-        function parseCSVLine(line) {
-            const result = [];
-            let current = '';
-            let inQuotes = false;
-            for (let i = 0; i < line.length; i++) {
-                const char = line[i];
-                if (char === '"') {
-                    inQuotes = !inQuotes;
-                } else if (char === ',' && !inQuotes) {
-                    result.push(cleanCSVValue(current));
-                    current = '';
-                } else {
-                    current += char;
-                }
-            }
-            result.push(cleanCSVValue(current));
-            return result;
-        }
-
-        function cleanCSVValue(val) {
-            val = val.trim();
-            if (val.startsWith('"') && val.endsWith('"')) {
-                val = val.substring(1, val.length - 1);
-            }
-            return val.trim();
-        }
-
-        // CSV parser to import/merge students & payments (Wipe-resistant and NaN protected!)
-        function parseCSVImport(text) {
-            if (text.startsWith('\uFEFF')) {
-                text = text.substring(1);
-            }
-
-            const lines = text.split('\n').map(line => line.trim()).filter(line => line.length > 0);
-            if (lines.length < 2) {
-                showNotification("CSV 檔案沒有足夠的行列", "error");
-                return;
-            }
-
-            // Safe parsing headers using the custom line parser
-            const headers = parseCSVLine(lines[0]);
-            if (headers[0] !== "班級" || headers[1] !== "座號" || headers[2] !== "姓名") {
-                showNotification("CSV 表頭不符合規定格式，請使用系統提供的範本", "error");
-                return;
-            }
-
-            // Analyze Fee Columns in Header
-            let importedFeeNames = [];
-            let feeColIndex = {}; // maps feeName to { targetIndex, statusIndex, amountIndex, paidAtIndex }
-            
-            for (let i = 3; i < headers.length; i++) {
-                const h = headers[i];
-                if (h.endsWith('_應繳總額')) {
-                    const feeName = h.replace('_應繳總額', '');
-                    if (!feeColIndex[feeName]) feeColIndex[feeName] = {};
-                    feeColIndex[feeName].targetIndex = i;
-                    importedFeeNames.push(feeName);
-                } else if (h.endsWith('_繳費狀態')) {
-                    const feeName = h.replace('_繳費狀態', '');
-                    if (!feeColIndex[feeName]) feeColIndex[feeName] = {};
-                    feeColIndex[feeName].statusIndex = i;
-                } else if (h.endsWith('_已付金額')) {
-                    const feeName = h.replace('_已付金額', '');
-                    if (!feeColIndex[feeName]) feeColIndex[feeName] = {};
-                    feeColIndex[feeName].amountIndex = i;
-                } else if (h.endsWith('_繳清時間')) {
-                    const feeName = h.replace('_繳清時間', '');
-                    if (!feeColIndex[feeName]) feeColIndex[feeName] = {};
-                    feeColIndex[feeName].paidAtIndex = i;
-                }
-            }
-
-            // Merge / Create Fee Items with default $500 if they don't exist
-            importedFeeNames.forEach(name => {
-                const exists = state.feeItems.some(f => f.name === name);
-                if (!exists) {
-                    state.feeItems.push({
-                        id: 'f_' + Math.random().toString(36).substr(2, 9),
-                        name: name,
-                        amount: 500 // fallback price
-                    });
-                }
-            });
-
-            let addedStudents = 0;
-            let updatedPayments = 0;
-
-            // Process Rows using our high-strength safe parser
-            for (let r = 1; r < lines.length; r++) {
-                const cols = parseCSVLine(lines[r]);
-                if (cols.length < 3) continue;
-
-                const cls = cols[0];
-                const seat = cols[1].padStart(2, '0');
-                const name = cols[2];
-
-                // Find or create student
-                let student = state.students.find(s => s.class === cls && s.seatNo === seat);
-                if (!student) {
-                    student = {
-                        id: 's_' + Math.random().toString(36).substr(2, 9),
-                        class: cls,
-                        seatNo: seat,
-                        name: name
-                    };
-                    state.students.push(student);
-                    addedStudents++;
-                }
-
-                // Process fee statuses and individual targetAmounts & paidAt timestamps with high safety guards
-                Object.keys(feeColIndex).forEach(feeName => {
-                    const fee = state.feeItems.find(f => f.name === feeName);
-                    if (!fee) return;
-
-                    const cfg = feeColIndex[feeName];
-                    
-                    // Safe parsing for target Amount
-                    let targetAmt = parseFloat(cols[cfg.targetIndex]);
-                    if (isNaN(targetAmt)) {
-                        targetAmt = fee.amount;
-                    }
-
-                    // Safe parsing for payment status (supports different terminologies!)
-                    const rawStatus = cols[cfg.statusIndex] || "未繳";
-                    const status = normalizeImportStatus(rawStatus);
-
-                    // Safe parsing for already paid amount
-                    let amtPaid = parseFloat(cols[cfg.amountIndex]);
-                    if (isNaN(amtPaid)) {
-                        amtPaid = 0;
-                    }
-
-                    const paidAt = cfg.paidAtIndex !== undefined ? (cols[cfg.paidAtIndex] || null) : null;
-
-                    const pKey = `${student.id}_${fee.id}`;
-                    state.payments[pKey] = {
-                        status: status,
-                        paidAmount: status === '已繳清' ? targetAmt : amtPaid,
-                        targetAmount: targetAmt,
-                        paidAt: status === '已繳清' ? paidAt : null
-                    };
-                    updatedPayments++;
-                });
-            }
-
-            saveToLocalStorage();
-            renderAll();
-            showNotification(`CSV 解析並完成智慧字詞對齊！新增學生: ${addedStudents} 人，更新與客製化登記: ${updatedPayments} 筆`);
-        }
-
-        // CSV Template Generator (Upgraded to include _繳清時間 & _應繳總額!)
-        function downloadCSVTemplate() {
-            let csv = "\uFEFF班級,座號,姓名";
-            if (state.feeItems.length > 0) {
-                state.feeItems.forEach(fee => {
-                    csv += `,${fee.name}_應繳總額,${fee.name}_繳費狀態,${fee.name}_已付金額,${fee.name}_繳清時間`;
-                });
-            } else {
-                csv += ",示範班費_應繳總額,示範班費_繳費狀態,示範班費_已付金額,示範班費_繳清時間";
-            }
-            csv += "\n三年二班,01,陳小明,500,未繳,0,\n三年二班,02,張大衛,300,已收,300,2026/05/29 13:50";
-
-            const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
-            const url = URL.createObjectURL(blob);
-            const link = document.createElement("a");
-            link.setAttribute("href", url);
-            link.setAttribute("download", "學生收費客製化匯入範本.csv");
-            link.style.visibility = 'hidden';
-            document.body.appendChild(link);
-            link.click();
-            document.body.removeChild(link);
-            showNotification("範本下載完成，已支援「已收/已繳/已付」等多種中文自動辨識！");
-        }
-
-        // Safe Reset Tool to clear old dirty states
-        function purgeSystemData() {
-            if (confirm("🚨 警告警告：此動作將會「永久抹除」您目前瀏覽器儲存的所有學生資料、班級名冊、收費項目以及全部的繳費與時間歷史登記，並且「完全無法還原」！確定要清空嗎？")) {
-                localStorage.removeItem('class_fee_manager_state');
-                state = {
-                    students: [],
-                    feeItems: [],
-                    payments: {}
-                };
-                saveToLocalStorage();
-                renderAll();
-                showNotification("系統資料庫已徹底重置乾淨！", "warning");
-                switchTab('students'); // Guide them to Student tab to begin fresh
-            }
-        }
-
-        // PWA Self-Hosting Builder
-        function downloadPWABackup() {
-            const manifestCode = `{
-  "name": "查理學生收費系統 - PWA",
-  "short_name": "查理收費",
-  "start_url": "./index.html",
-  "display": "standalone",
-  "background_color": "#f8fafc",
-  "theme_color": "#4318ed",
-  "icons": [
-    {
-      "src": "https://img.icons8.com/color/192/wallet.png",
-      "sizes": "192x192",
-      "type": "image/png"
-    },
-    {
-      "src": "https://img.icons8.com/color/512/wallet.png",
-      "sizes": "512x512",
-      "type": "image/png"
-    }
-  ]
-}`;
-            
-            const swCode = `const CACHE_NAME = 'student-fee-v1';
-const ASSETS = [
-  './index.html'
+import React, { useState, useEffect } from 'react';
+
+// ==========================================
+// 預設示範資料 (讓老師一進來就能體驗完整功能)
+// ==========================================
+const DEFAULT_CLASSES = ["一年一班", "一年二班"];
+
+const DEFAULT_STUDENTS = [
+  { id: "s1", class: "一年一班", seatNumber: "01", name: "陳小明" },
+  { id: "s2", class: "一年一班", seatNumber: "02", name: "林美玲" },
+  { id: "s3", class: "一年一班", seatNumber: "03", name: "張家豪" },
+  { id: "s4", class: "一年一班", seatNumber: "04", name: "黃雅婷" },
+  { id: "s5", class: "一年二班", seatNumber: "01", name: "王宇軒" },
+  { id: "s6", class: "一年二班", seatNumber: "02", name: "許薇恩" },
 ];
 
-self.addEventListener('install', e => {
-  e.waitUntil(
-    caches.open(CACHE_NAME).then(cache => cache.addAll(ASSETS))
-  );
-});
+const DEFAULT_FEES = [
+  { id: "f1", name: "班費", defaultAmount: 500 },
+  { id: "f2", name: "校外教學費", defaultAmount: 1200 },
+  { id: "f3", name: "英文講義費", defaultAmount: 250 },
+];
 
-self.addEventListener('fetch', e => {
-  e.respondWith(
-    caches.match(e.request).then(response => response || fetch(e.request))
-  );
-});`;
+const DEFAULT_PAYMENTS = {
+  "s1_f1": { status: "paid", customAmount: 500, paidAmount: 500 },
+  "s2_f1": { status: "unpaid", customAmount: 500, paidAmount: 0 },
+  "s3_f1": { status: "partial", customAmount: 500, paidAmount: 200 },
+  "s4_f1": { status: "paid", customAmount: 400, paidAmount: 400 }, // 減免100元特例
+  "s1_f2": { status: "paid", customAmount: 1200, paidAmount: 1200 },
+  "s2_f2": { status: "unpaid", customAmount: 1200, paidAmount: 0 },
+  "s3_f2": { status: "unpaid", customAmount: 1200, paidAmount: 0 },
+  "s4_f2": { status: "paid", customAmount: 1200, paidAmount: 1200 },
+};
 
-            // Zip setup instruction
-            const instructions = `自託管 PWA 部署說明：
-===================================
-1. 將本系統 the HTML 程式碼儲存為 index.html。
-2. 在同一個資料夾，建立名為 manifest.json 的檔案，內容如下：
-\n${manifestCode}\n
-3. 在同一個資料夾，建立名為 sw.js 的檔案，內容如下：
-\n${swCode}\n
-4. 將上述三個檔案同步上傳至您的靜態伺服器 (必須是 HTTPS 加密連線，如 GitHub Pages, Vercel 等)。
-5. 成功打開後，瀏覽器便會出現「下載此App」的按鈕，即可享受完美的原生 App 離線運作功能！`;
+export default function App() {
+  // --- 狀態管理 ---
+  const [activeTab, setActiveTab] = useState('dashboard'); // dashboard, students, fees, matrix, backup
+  const [classes, setClasses] = useState(() => {
+    const saved = localStorage.getItem('charlie_classes');
+    return saved ? JSON.parse(saved) : DEFAULT_CLASSES;
+  });
+  const [students, setStudents] = useState(() => {
+    const saved = localStorage.getItem('charlie_students');
+    return saved ? JSON.parse(saved) : DEFAULT_STUDENTS;
+  });
+  const [fees, setFees] = useState(() => {
+    const saved = localStorage.getItem('charlie_fees');
+    return saved ? JSON.parse(saved) : DEFAULT_FEES;
+  });
+  const [payments, setPayments] = useState(() => {
+    const saved = localStorage.getItem('charlie_payments');
+    return saved ? JSON.parse(saved) : DEFAULT_PAYMENTS;
+  });
 
-            const blob = new Blob([instructions], { type: 'text/plain;charset=utf-8;' });
-            const url = URL.createObjectURL(blob);
-            const link = document.createElement("a");
-            link.setAttribute("href", url);
-            link.setAttribute("download", "PWA_自託管部署指南.txt");
-            link.style.visibility = 'hidden';
-            document.body.appendChild(link);
-            link.click();
-            document.body.removeChild(link);
-            showNotification("PWA 部署指南與代碼已成功下載！");
+  // 當前篩選班級 (影響名冊與矩陣)
+  const [selectedClass, setSelectedClass] = useState(classes[0] || "");
+
+  // 本地快取儲存
+  useEffect(() => {
+    localStorage.setItem('charlie_classes', JSON.stringify(classes));
+  }, [classes]);
+  useEffect(() => {
+    localStorage.setItem('charlie_students', JSON.stringify(students));
+  }, [students]);
+  useEffect(() => {
+    localStorage.setItem('charlie_fees', JSON.stringify(fees));
+  }, [fees]);
+  useEffect(() => {
+    localStorage.setItem('charlie_payments', JSON.stringify(payments));
+  }, [payments]);
+
+  // --- 表單/互動彈出視窗暫存狀態 ---
+  // 1. 學生編輯
+  const [editingStudent, setEditingStudent] = useState(null); // { id, class, seatNumber, name }
+  const [showAddStudentModal, setShowAddStudentModal] = useState(false);
+  const [newStudent, setNewStudent] = useState({ class: selectedClass, seatNumber: '', name: '' });
+  
+  // 批量匯入
+  const [showBatchImportModal, setShowBatchImportModal] = useState(false);
+  const [batchImportText, setBatchImportText] = useState(""); // 格式: "座號 姓名" 每行一個
+  const [batchImportClass, setBatchImportClass] = useState(selectedClass || "");
+
+  // 學生大量批次編輯
+  const [selectedStudentIds, setSelectedStudentIds] = useState([]);
+  const [showBatchEditModal, setShowBatchEditModal] = useState(false);
+  const [batchEditTargetClass, setBatchEditTargetClass] = useState("");
+
+  // 新增班級
+  const [newClassName, setNewClassName] = useState("");
+
+  // 2. 費用編輯
+  const [showAddFeeModal, setShowAddFeeModal] = useState(false);
+  const [newFee, setNewFee] = useState({ name: '', defaultAmount: '' });
+  const [editingFee, setEditingFee] = useState(null);
+
+  // 3. 繳費登記 Matrix 面板
+  const [activePaymentModal, setActivePaymentModal] = useState(null); // { studentId, feeId, studentName, feeName, defaultAmount }
+  const [tempPaymentState, setTempPaymentState] = useState({ status: 'unpaid', customAmount: 0, paidAmount: 0 });
+
+  // 4. 自訂提示框 (取代 alert)
+  const [toast, setToast] = useState(null);
+  const showToast = (message, type = 'success') => {
+    setToast({ message, type });
+    setTimeout(() => setToast(null), 3000);
+  };
+
+  // --- 輔助函式：取得特定學生的特定繳費資料 ---
+  const getPayment = (studentId, feeId, defaultAmount) => {
+    const key = `${studentId}_${feeId}`;
+    if (payments[key]) {
+      return payments[key];
+    }
+    // 預設未繳
+    return { status: 'unpaid', customAmount: defaultAmount, paidAmount: 0 };
+  };
+
+  // --- 操作邏輯：班級與學生 ---
+  const handleAddClass = () => {
+    if (!newClassName.trim()) return showToast("班級名稱不能為空", "error");
+    if (classes.includes(newClassName.trim())) return showToast("班級已存在", "error");
+    const updated = [...classes, newClassName.trim()];
+    setClasses(updated);
+    setSelectedClass(newClassName.trim());
+    setNewClassName("");
+    showToast(`成功建立班級: ${newClassName}`);
+  };
+
+  const handleAddStudent = () => {
+    if (!newStudent.class || !newStudent.seatNumber.trim() || !newStudent.name.trim()) {
+      return showToast("請完整填寫班級、座號與姓名", "error");
+    }
+    const id = "s_" + Date.now();
+    setStudents([...students, { id, ...newStudent }]);
+    setNewStudent({ class: selectedClass, seatNumber: '', name: '' });
+    setShowAddStudentModal(false);
+    showToast("成功新增學生！");
+  };
+
+  const handleUpdateStudent = () => {
+    if (!editingStudent.seatNumber.trim() || !editingStudent.name.trim()) {
+      return showToast("座號與姓名不可空白", "error");
+    }
+    setStudents(students.map(s => s.id === editingStudent.id ? editingStudent : s));
+    setEditingStudent(null);
+    showToast("學生資料更新成功！");
+  };
+
+  const handleDeleteStudent = (id) => {
+    if (confirm("確定要刪除這位學生嗎？此動作將一併清除該生所有繳費紀錄。")) {
+      setStudents(students.filter(s => s.id !== id));
+      // 刪除其繳費資料
+      const newPayments = { ...payments };
+      Object.keys(newPayments).forEach(key => {
+        if (key.startsWith(`${id}_`)) {
+          delete newPayments[key];
         }
+      });
+      setPayments(newPayments);
+      showToast("學生已成功刪除");
+    }
+  };
 
-        // SERVICE WORKER IN-PAGE REGISTER
-        function registerMockServiceWorker() {
-            if ('serviceWorker' in navigator) {
-                const swCode = `const CACHE_NAME = 'fee-pwa-cache-v1';
-                    self.addEventListener('install', e => {
-                        self.skipWaiting();
-                    });
-                    self.addEventListener('activate', e => {
-                        e.waitUntil(clients.claim());
-                    });
-                    self.addEventListener('fetch', e => {
-                        e.respondWith(fetch(e.request).catch(() => caches.match(e.request)));
-                    });`;
-                
-                const blob = new Blob([swCode], { type: 'application/javascript' });
-                const swUrl = URL.createObjectURL(blob);
-                
-                navigator.serviceWorker.register(swUrl)
-                    .then(() => console.log('Inline ServiceWorker Registered successfully.'))
-                    .catch(err => console.log('ServiceWorker registration deferred:', err));
+  // 批量匯入邏輯
+  const handleBatchImport = () => {
+    if (!batchImportClass) return showToast("請先選擇或建立班級", "error");
+    if (!batchImportText.trim()) return showToast("請輸入欲匯入的名單", "error");
+
+    const lines = batchImportText.split('\n');
+    const newStudentsList = [];
+    let successCount = 0;
+
+    lines.forEach((line) => {
+      const cleanLine = line.trim();
+      if (!cleanLine) return;
+
+      // 支援用 空格、逗號、Tab 分隔 "座號" 與 "姓名"
+      const parts = cleanLine.split(/[\s,，\t]+/);
+      if (parts.length >= 2) {
+        const seat = parts[0].trim();
+        const name = parts.slice(1).join(" ").trim();
+        newStudentsList.push({
+          id: `s_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`,
+          class: batchImportClass,
+          seatNumber: seat,
+          name: name
+        });
+        successCount++;
+      }
+    });
+
+    if (newStudentsList.length > 0) {
+      setStudents([...students, ...newStudentsList]);
+      setBatchImportText("");
+      setShowBatchImportModal(false);
+      setSelectedClass(batchImportClass);
+      showToast(`成功批量匯入 ${successCount} 位學生到 ${batchImportClass}`);
+    } else {
+      showToast("匯入格式不正確，請確保每行有「座號 姓名」", "error");
+    }
+  };
+
+  // 批次編輯學生
+  const handleBatchEditClass = () => {
+    if (!batchEditTargetClass) return showToast("請選擇目標班級", "error");
+    setStudents(students.map(s => {
+      if (selectedStudentIds.includes(s.id)) {
+        return { ...s, class: batchEditTargetClass };
+      }
+      return s;
+    }));
+    setSelectedStudentIds([]);
+    setShowBatchEditModal(false);
+    showToast(`成功將選定學生轉班至 ${batchEditTargetClass}`);
+  };
+
+  const handleBatchDeleteStudents = () => {
+    if (confirm(`確定要批次刪除選定的 ${selectedStudentIds.length} 位學生嗎？`)) {
+      setStudents(students.filter(s => !selectedStudentIds.includes(s.id)));
+      const newPayments = { ...payments };
+      selectedStudentIds.forEach(sid => {
+        Object.keys(newPayments).forEach(key => {
+          if (key.startsWith(`${sid}_`)) {
+            delete newPayments[key];
+          }
+        });
+      });
+      setPayments(newPayments);
+      setSelectedStudentIds([]);
+      showToast("批次刪除學生成功");
+    }
+  };
+
+  // --- 操作邏輯：費用設定 ---
+  const handleAddFee = () => {
+    if (!newFee.name.trim() || !newFee.defaultAmount) {
+      return showToast("請輸入完整項目名稱與預設金額", "error");
+    }
+    const id = "f_" + Date.now();
+    setFees([...fees, {
+      id,
+      name: newFee.name.trim(),
+      defaultAmount: Number(newFee.defaultAmount)
+    }]);
+    setNewFee({ name: '', defaultAmount: '' });
+    setShowAddFeeModal(false);
+    showToast("成功建立收費項目");
+  };
+
+  const handleUpdateFee = () => {
+    if (!editingFee.name.trim() || !editingFee.defaultAmount) {
+      return showToast("欄位不可為空", "error");
+    }
+    setFees(fees.map(f => f.id === editingFee.id ? { ...editingFee, defaultAmount: Number(editingFee.defaultAmount) } : f));
+    setEditingFee(null);
+    showToast("收費項目更新成功");
+  };
+
+  const handleDeleteFee = (id) => {
+    if (confirm("確定刪除此收費名目嗎？這將刪除所有學生的這筆繳費狀態。")) {
+      setFees(fees.filter(f => f.id !== id));
+      const newPayments = { ...payments };
+      Object.keys(newPayments).forEach(key => {
+        if (key.endsWith(`_${id}`)) {
+          delete newPayments[key];
+        }
+      });
+      setPayments(newPayments);
+      showToast("收費項目已刪除");
+    }
+  };
+
+  // --- 操作邏輯：登記矩陣與專屬金額修改 ---
+  const openPaymentModal = (student, fee) => {
+    const payInfo = getPayment(student.id, fee.id, fee.defaultAmount);
+    setActivePaymentModal({
+      studentId: student.id,
+      feeId: fee.id,
+      studentName: student.name,
+      feeName: fee.name,
+      defaultAmount: fee.defaultAmount
+    });
+    setTempPaymentState({
+      status: payInfo.status,
+      customAmount: payInfo.customAmount !== undefined ? payInfo.customAmount : fee.defaultAmount,
+      paidAmount: payInfo.paidAmount || 0
+    });
+  };
+
+  const savePaymentStatus = () => {
+    const key = `${activePaymentModal.studentId}_${activePaymentModal.feeId}`;
+    
+    // 計算邏輯：
+    // 已繳清 -> 已收金額 = 應繳金額
+    // 未繳 -> 已收金額 = 0
+    // 部分繳納 -> 保留使用者輸入的已收金額
+    let finalPaid = Number(tempPaymentState.paidAmount);
+    if (tempPaymentState.status === 'paid') {
+      finalPaid = Number(tempPaymentState.customAmount);
+    } else if (tempPaymentState.status === 'unpaid') {
+      finalPaid = 0;
+    }
+
+    const updatedPayment = {
+      status: tempPaymentState.status,
+      customAmount: Number(tempPaymentState.customAmount),
+      paidAmount: finalPaid
+    };
+
+    setPayments({
+      ...payments,
+      [key]: updatedPayment
+    });
+
+    setActivePaymentModal(null);
+    showToast("登記變更成功！");
+  };
+
+  // 一鍵恢復預設單價
+  const restoreDefaultPrice = () => {
+    setTempPaymentState({
+      ...tempPaymentState,
+      customAmount: activePaymentModal.defaultAmount
+    });
+    showToast("已載入此項目的預設應繳金額");
+  };
+
+  // --- 數據統計分析 (儀表板) ---
+  const getOverallStats = () => {
+    let totalExpected = 0; // 總應收
+    let totalPaid = 0;     // 總已收
+    let totalUnpaid = 0;   // 總未收
+
+    students.forEach(student => {
+      fees.forEach(fee => {
+        const pay = getPayment(student.id, fee.id, fee.defaultAmount);
+        const expected = pay.customAmount !== undefined ? pay.customAmount : fee.defaultAmount;
+        totalExpected += expected;
+        totalPaid += pay.paidAmount || 0;
+      });
+    });
+
+    totalUnpaid = totalExpected - totalPaid;
+    const progress = totalExpected > 0 ? Math.round((totalPaid / totalExpected) * 100) : 0;
+
+    return { totalExpected, totalPaid, totalUnpaid, progress };
+  };
+
+  // 取得特定收費項目的統計 (特定班級)
+  const getFeeStatsForClass = (feeId, classVal) => {
+    const classStudents = students.filter(s => s.class === classVal);
+    let totalExpected = 0;
+    let totalPaid = 0;
+    let paidCount = 0;
+    let partialCount = 0;
+    let unpaidCount = 0;
+
+    classStudents.forEach(s => {
+      const fee = fees.find(f => f.id === feeId);
+      if (!fee) return;
+      const pay = getPayment(s.id, feeId, fee.defaultAmount);
+      const expected = pay.customAmount !== undefined ? pay.customAmount : fee.defaultAmount;
+      totalExpected += expected;
+      totalPaid += pay.paidAmount || 0;
+
+      if (pay.status === 'paid') paidCount++;
+      else if (pay.status === 'partial') partialCount++;
+      else unpaidCount++;
+    });
+
+    const progress = totalExpected > 0 ? Math.round((totalPaid / totalExpected) * 100) : 0;
+    return { totalExpected, totalPaid, progress, paidCount, partialCount, unpaidCount, totalStudents: classStudents.length };
+  };
+
+  const overall = getOverallStats();
+
+  // --- 備份與 Excel 匯入/匯出 (CSV) ---
+  // 1. 下載 JSON 完整備份
+  const exportBackupJSON = () => {
+    const backupData = {
+      classes,
+      students,
+      fees,
+      payments,
+      exportAt: new Date().toISOString()
+    };
+    const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(backupData, null, 2));
+    const downloadAnchor = document.createElement('a');
+    downloadAnchor.setAttribute("href", dataStr);
+    downloadAnchor.setAttribute("download", `查理學生收費系統備份_${new Date().toISOString().split('T')[0]}.json`);
+    document.body.appendChild(downloadAnchor);
+    downloadAnchor.click();
+    downloadAnchor.remove();
+    showToast("完整系統 JSON 備份檔已開始下載");
+  };
+
+  // 2. 導入 JSON 備份
+  const handleImportJSON = (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      try {
+        const data = JSON.parse(event.target.result);
+        if (data.classes && data.students && data.fees && data.payments) {
+          setClasses(data.classes);
+          setStudents(data.students);
+          setFees(data.fees);
+          setPayments(data.payments);
+          if (data.classes.length > 0) setSelectedClass(data.classes[0]);
+          showToast("系統資料還原成功！");
+        } else {
+          showToast("備份檔格式不正確！", "error");
+        }
+      } catch (err) {
+        showToast("解析備份檔案時發生錯誤", "error");
+      }
+    };
+    reader.readAsText(file);
+  };
+
+  // 3. 匯出收費矩陣為 Excel 相容的 CSV 檔案 (以當前選擇班級為主)
+  const exportClassPaymentCSV = () => {
+    const classStudents = students.filter(s => s.class === selectedClass);
+    if (classStudents.length === 0) return showToast("目前班級沒有學生資料可匯出", "error");
+
+    // Header: 班級, 座號, 姓名, [項目1應繳, 項目1實繳, 項目1狀態... ]
+    let csvContent = "\uFEFF"; // UTF-8 BOM 避免 Excel 中文亂碼
+    
+    // 建立標題列
+    const headers = ["班級", "座號", "姓名"];
+    fees.forEach(f => {
+      headers.push(`${f.name}(應繳)`, `${f.name}(已繳)`, `${f.name}(狀態)`);
+    });
+    csvContent += headers.join(",") + "\n";
+
+    // 建立每位學生的資料行
+    classStudents.forEach(s => {
+      const row = [s.class, s.seatNumber, s.name];
+      fees.forEach(f => {
+        const pay = getPayment(s.id, f.id, f.defaultAmount);
+        const expected = pay.customAmount !== undefined ? pay.customAmount : f.defaultAmount;
+        const statusMap = { 'paid': '已繳清', 'partial': '部分繳納', 'unpaid': '未繳' };
+        row.push(expected, pay.paidAmount || 0, statusMap[pay.status] || '未繳');
+      });
+      csvContent += row.join(",") + "\n";
+    });
+
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.setAttribute("href", url);
+    link.setAttribute("download", `${selectedClass}_繳費明細清單_${new Date().toISOString().split('T')[0]}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    showToast(`${selectedClass} 的 Excel 繳費明細匯出成功！`);
+  };
+
+  // 4. 從 CSV 匯入學生清單
+  const handleImportStudentsCSV = (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      try {
+        const text = event.target.result;
+        const lines = text.split('\n');
+        const newImported = [];
+        let skippedCount = 0;
+        let successCount = 0;
+
+        lines.forEach((line, index) => {
+          if (index === 0 || !line.trim()) return; // 略過第一行 Header
+          
+          // 分隔 CSV (處理可能的 BOM)
+          const cleanLine = line.replace(/^\uFEFF/, '').trim();
+          const cols = cleanLine.split(',');
+
+          if (cols.length >= 3) {
+            const cls = cols[0].trim();
+            const seat = cols[1].trim();
+            const name = cols[2].trim();
+
+            if (cls && seat && name) {
+              newImported.push({
+                id: `s_csv_${Date.now()}_${index}`,
+                class: cls,
+                seatNumber: seat,
+                name: name
+              });
+              successCount++;
+            } else {
+              skippedCount++;
             }
+          } else {
+            skippedCount++;
+          }
+        });
+
+        if (newImported.length > 0) {
+          // 自動加入新發現的班級
+          const newClasses = [...classes];
+          newImported.forEach(item => {
+            if (!newClasses.includes(item.class)) {
+              newClasses.push(item.class);
+            }
+          });
+          setClasses(newClasses);
+          setStudents([...students, ...newImported]);
+          if (newClasses.length > 0) setSelectedClass(newClasses[0]);
+          showToast(`成功從 CSV 匯入 ${successCount} 位學生！${skippedCount > 0 ? `(略過 ${skippedCount} 筆格式不符資料)` : ''}`);
+        } else {
+          showToast("未偵測到有效的學生資料，請確保欄位順序為：班級, 座號, 姓名", "error");
         }
-    </script>
-</body>
-</html>
+      } catch (err) {
+        showToast("解析 CSV 時發生錯誤，請確認編碼為 UTF-8", "error");
+      }
+    };
+    reader.readAsText(file, "UTF-8");
+  };
+
+  // --- 整合的 PWA 檔案產生機制與安裝說明 ---
+  const downloadPWAPackage = () => {
+    // 提供完整的 manifest.json 與 sw.js 字串，供使用者複製建置完整的實體 PWA
+    const manifestContent = JSON.stringify({
+      "short_name": "查理收費",
+      "name": "查理學生收費管理系統",
+      "icons": [
+        {
+          "src": "https://images.unsplash.com/photo-1554224155-8d04cb21cd6c?w=192&h=192&fit=crop",
+          "type": "image/png",
+          "sizes": "192x192"
+        },
+        {
+          "src": "https://images.unsplash.com/photo-1554224155-8d04cb21cd6c?w=512&h=512&fit=crop",
+          "type": "image/png",
+          "sizes": "512x512"
+        }
+      ],
+      "start_url": "./index.html",
+      "background_color": "#4F46E5",
+      "theme_color": "#4F46E5",
+      "display": "standalone",
+      "orientation": "portrait"
+    }, null, 2);
+
+    const swContent = `
+const CACHE_NAME = 'charlie-fees-v1';
+const ASSETS = [
+  './',
+  './index.html'
+];
+self.addEventListener('install', e => {
+  e.waitUntil(caches.open(CACHE_NAME).then(cache => cache.addAll(ASSETS)));
+});
+self.addEventListener('fetch', e => {
+  e.respondWith(caches.match(e.request).then(res => res || fetch(e.request)));
+});
+    `;
+
+    // 封裝並提供打包說明
+    const blobManifest = new Blob([manifestContent], { type: 'application/json' });
+    const urlManifest = URL.createObjectURL(blobManifest);
+    const linkM = document.createElement("a");
+    linkM.href = urlManifest;
+    linkM.download = "manifest.json";
+    linkM.click();
+
+    setTimeout(() => {
+      const blobSW = new Blob([swContent], { type: 'application/javascript' });
+      const urlSW = URL.createObjectURL(blobSW);
+      const linkS = document.createElement("a");
+      linkS.href = urlSW;
+      linkS.download = "sw.js";
+      linkS.click();
+      showToast("已下載 PWA 設定檔 (manifest.json & sw.js)！");
+    }, 500);
+  };
+
+
+  return (
+    <div className="min-h-screen bg-slate-50 text-slate-800 font-sans flex flex-col">
+      {/* 自訂通知 (Toast) */}
+      {toast && (
+        <div className={`fixed top-4 right-4 z-50 flex items-center gap-2 px-4 py-3 rounded-xl shadow-xl transition-all duration-300 animate-bounce ${
+          toast.type === 'error' ? 'bg-red-500 text-white' : 'bg-emerald-500 text-white'
+        }`}>
+          <span>{toast.message}</span>
+        </div>
+      )}
+
+      {/* 頂部導航列 */}
+      <header className="bg-gradient-to-r from-slate-900 to-indigo-950 text-white shadow-md sticky top-0 z-40">
+        <div className="max-w-7xl mx-auto px-4 py-3 flex flex-wrap justify-between items-center gap-4">
+          <div className="flex items-center gap-3">
+            <div className="bg-indigo-600 p-2.5 rounded-xl text-white shadow-inner">
+              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" />
+              </svg>
+            </div>
+            <div>
+              <h1 className="text-xl font-extrabold tracking-wide">查理學生收費系統</h1>
+              <p className="text-xs text-indigo-300">Charlie Fee Management Pro</p>
+            </div>
+          </div>
+
+          {/* 班級快速選擇切換 */}
+          <div className="flex items-center gap-2 bg-slate-800/60 p-1.5 rounded-xl border border-slate-700">
+            <span className="text-xs text-slate-300 pl-2">目前班級:</span>
+            <select 
+              value={selectedClass}
+              onChange={(e) => setSelectedClass(e.target.value)}
+              className="bg-slate-900 text-white font-medium text-sm rounded-lg py-1 px-3 border-0 focus:ring-2 focus:ring-indigo-500"
+            >
+              {classes.map(c => (
+                <option key={c} value={c}>{c}</option>
+              ))}
+            </select>
+          </div>
+        </div>
+      </header>
+
+      {/* 功能分頁選單 */}
+      <nav className="bg-white border-b border-slate-200 shadow-sm">
+        <div className="max-w-7xl mx-auto px-4 flex overflow-x-auto whitespace-nowrap scrollbar-none">
+          <button 
+            onClick={() => setActiveTab('dashboard')}
+            className={`flex items-center gap-2 py-4 px-6 border-b-2 font-semibold text-sm transition-all ${
+              activeTab === 'dashboard' ? 'border-indigo-600 text-indigo-600 bg-indigo-50/40' : 'border-transparent text-slate-500 hover:text-slate-900 hover:bg-slate-50'
+            }`}
+          >
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M11 3.055A9.003 9.003 0 1020.945 13H11V3.055z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M20.488 9H15V3.512A9.025 9.025 0 0120.488 9z" /></svg>
+            儀表板總覽
+          </button>
+          <button 
+            onClick={() => setActiveTab('students')}
+            className={`flex items-center gap-2 py-4 px-6 border-b-2 font-semibold text-sm transition-all ${
+              activeTab === 'students' ? 'border-indigo-600 text-indigo-600 bg-indigo-50/40' : 'border-transparent text-slate-500 hover:text-slate-900 hover:bg-slate-50'
+            }`}
+          >
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" /></svg>
+            學生名冊管理
+          </button>
+          <button 
+            onClick={() => setActiveTab('fees')}
+            className={`flex items-center gap-2 py-4 px-6 border-b-2 font-semibold text-sm transition-all ${
+              activeTab === 'fees' ? 'border-indigo-600 text-indigo-600 bg-indigo-50/40' : 'border-transparent text-slate-500 hover:text-slate-900 hover:bg-slate-50'
+            }`}
+          >
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+            收費項目設定
+          </button>
+          <button 
+            onClick={() => setActiveTab('matrix')}
+            className={`flex items-center gap-2 py-4 px-6 border-b-2 font-semibold text-sm transition-all ${
+              activeTab === 'matrix' ? 'border-indigo-600 text-indigo-600 bg-indigo-50/40' : 'border-transparent text-slate-500 hover:text-slate-900 hover:bg-slate-50'
+            }`}
+          >
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 6h16M4 10h16M4 14h16M4 18h16" /></svg>
+            收費登記矩陣
+          </button>
+          <button 
+            onClick={() => setActiveTab('backup')}
+            className={`flex items-center gap-2 py-4 px-6 border-b-2 font-semibold text-sm transition-all ${
+              activeTab === 'backup' ? 'border-indigo-600 text-indigo-600 bg-indigo-50/40' : 'border-transparent text-slate-500 hover:text-slate-900 hover:bg-slate-50'
+            }`}
+          >
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4" /></svg>
+            資料備份與 PWA
+          </button>
+        </div>
+      </nav>
+
+      {/* 主內容區塊 */}
+      <main className="flex-1 max-w-7xl w-full mx-auto p-4 sm:p-6 lg:p-8">
+
+        {/* ========================================================
+            TAB 1: 儀表板總覽
+            ======================================================== */}
+        {activeTab === 'dashboard' && (
+          <div className="space-y-6 animate-fadeIn">
+            <div className="flex justify-between items-center">
+              <div>
+                <h2 className="text-2xl font-bold text-slate-900">學費財務總覽</h2>
+                <p className="text-slate-500 text-sm">全校所有註冊學生及項目的財務統計</p>
+              </div>
+              <span className="text-xs bg-slate-200 text-slate-700 px-3 py-1.5 rounded-lg font-medium">
+                更新於: 今天 21:20
+              </span>
+            </div>
+
+            {/* 大字卡區塊 */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-semibold text-slate-500 mb-1">應收總金額 (Expected)</p>
+                  <h3 className="text-3xl font-black text-slate-900">NT$ {overall.totalExpected.toLocaleString()}</h3>
+                </div>
+                <div className="bg-blue-50 p-4 rounded-xl text-blue-600">
+                  <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z" /></svg>
+                </div>
+              </div>
+
+              <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-semibold text-slate-500 mb-1">已實收金額 (Collected)</p>
+                  <h3 className="text-3xl font-black text-emerald-600">NT$ {overall.totalPaid.toLocaleString()}</h3>
+                </div>
+                <div className="bg-emerald-50 p-4 rounded-xl text-emerald-600">
+                  <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                </div>
+              </div>
+
+              <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-semibold text-slate-500 mb-1">未收金額 (Outstanding)</p>
+                  <h3 className="text-3xl font-black text-red-500">NT$ {overall.totalUnpaid.toLocaleString()}</h3>
+                </div>
+                <div className="bg-red-50 p-4 rounded-xl text-red-500">
+                  <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                </div>
+              </div>
+            </div>
+
+            {/* 進度總體大長條 */}
+            <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100">
+              <div className="flex justify-between items-center mb-4">
+                <div>
+                  <h4 className="font-bold text-slate-800 text-lg">總收費進度</h4>
+                  <p className="text-slate-400 text-xs">依目前所有設定學生計算</p>
+                </div>
+                <span className="text-3xl font-extrabold text-indigo-600">{overall.progress}%</span>
+              </div>
+              <div className="w-full bg-slate-100 h-5 rounded-full overflow-hidden shadow-inner">
+                <div 
+                  className="bg-gradient-to-r from-indigo-500 to-emerald-500 h-full transition-all duration-700" 
+                  style={{ width: `${overall.progress}%` }}
+                ></div>
+              </div>
+            </div>
+
+            {/* 當前選擇班級名目收費進度 */}
+            <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100">
+              <h4 className="font-bold text-slate-800 text-lg mb-4 flex items-center gap-2">
+                <span>班級項目細查：</span>
+                <span className="text-indigo-600 bg-indigo-50 px-3 py-1 rounded-full text-sm">{selectedClass}</span>
+              </h4>
+
+              {fees.length === 0 ? (
+                <div className="text-center py-8 text-slate-400">尚無任何收費名目，請先前往「收費項目設定」新增</div>
+              ) : (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {fees.map(f => {
+                    const stat = getFeeStatsForClass(f.id, selectedClass);
+                    return (
+                      <div key={f.id} className="p-4 rounded-xl bg-slate-50 border border-slate-150 space-y-3">
+                        <div className="flex justify-between items-start">
+                          <div>
+                            <h5 className="font-bold text-slate-900">{f.name}</h5>
+                            <span className="text-xs text-slate-400">預設單價 NT$ {f.defaultAmount}</span>
+                          </div>
+                          <span className="text-indigo-600 font-extrabold bg-indigo-50 px-2 py-1 rounded text-sm">
+                            已收 {stat.progress}%
+                          </span>
+                        </div>
+
+                        {/* 進度條 */}
+                        <div className="w-full bg-slate-200 h-2.5 rounded-full overflow-hidden">
+                          <div 
+                            className="bg-indigo-600 h-full rounded-full" 
+                            style={{ width: `${stat.progress}%` }}
+                          ></div>
+                        </div>
+
+                        {/* 細部統計數據 */}
+                        <div className="grid grid-cols-3 gap-2 pt-2 border-t border-slate-200 text-center text-xs">
+                          <div>
+                            <div className="text-slate-400">已收 (筆數)</div>
+                            <div className="font-bold text-emerald-600">NT$ {stat.totalPaid} ({stat.paidCount}人)</div>
+                          </div>
+                          <div>
+                            <div className="text-slate-400">部分 (筆數)</div>
+                            <div className="font-bold text-yellow-600">{stat.partialCount}人</div>
+                          </div>
+                          <div>
+                            <div className="text-slate-400">未收 (筆數)</div>
+                            <div className="font-bold text-red-500">NT$ {stat.totalExpected - stat.totalPaid} ({stat.unpaidCount}人)</div>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* ========================================================
+            TAB 2: 學生名冊管理
+            ======================================================== */}
+        {activeTab === 'students' && (
+          <div className="space-y-6 animate-fadeIn">
+            {/* 班級管理與新增 */}
+            <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 space-y-4">
+              <h3 className="font-bold text-slate-900 text-lg">班級設定</h3>
+              <div className="flex flex-wrap items-center gap-3">
+                <input 
+                  type="text" 
+                  placeholder="例如：一年三班"
+                  value={newClassName}
+                  onChange={(e) => setNewClassName(e.target.value)}
+                  className="bg-slate-50 border border-slate-200 rounded-xl px-4 py-2 text-sm focus:ring-2 focus:ring-indigo-500 focus:bg-white outline-none"
+                />
+                <button 
+                  onClick={handleAddClass}
+                  className="bg-indigo-600 hover:bg-indigo-700 text-white font-semibold text-sm px-4 py-2 rounded-xl shadow-md transition-all flex items-center gap-2"
+                >
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M12 4v16m8-8H4" /></svg>
+                  新增班級
+                </button>
+
+                <div className="h-6 w-[1px] bg-slate-200 mx-2"></div>
+
+                <div className="flex gap-2">
+                  <button 
+                    onClick={() => {
+                      if (!selectedClass) return showToast("請先選擇或建立班級", "error");
+                      setBatchImportClass(selectedClass);
+                      setShowBatchImportModal(true);
+                    }}
+                    className="bg-emerald-600 hover:bg-emerald-700 text-white font-semibold text-sm px-4 py-2 rounded-xl shadow-sm transition"
+                  >
+                    ⚡ 快速批量匯入名單
+                  </button>
+                </div>
+              </div>
+              <p className="text-xs text-slate-400">目前已有班級: {classes.map(c => <span key={c} className="inline-block bg-slate-100 text-slate-700 px-2 py-1 rounded mr-1.5">{c}</span>)}</p>
+            </div>
+
+            {/* 學生名冊表格 */}
+            <div className="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
+              <div className="p-6 border-b border-slate-100 flex flex-wrap justify-between items-center gap-4">
+                <div>
+                  <h3 className="font-bold text-slate-900 text-lg">
+                    學生名單清單 (<span className="text-indigo-600">{selectedClass}</span>)
+                  </h3>
+                  <p className="text-xs text-slate-400">目前班級學生數：{students.filter(s => s.class === selectedClass).length} 位</p>
+                </div>
+
+                <div className="flex flex-wrap gap-2">
+                  {/* 大量批次動作 */}
+                  {selectedStudentIds.length > 0 && (
+                    <div className="bg-slate-50 p-1.5 rounded-xl border border-slate-200 flex items-center gap-2">
+                      <span className="text-xs font-semibold text-indigo-600 px-2">已選 {selectedStudentIds.length} 位學童</span>
+                      <button 
+                        onClick={() => {
+                          setBatchEditTargetClass(selectedClass);
+                          setShowBatchEditModal(true);
+                        }}
+                        className="bg-indigo-100 hover:bg-indigo-200 text-indigo-700 font-semibold text-xs px-2.5 py-1.5 rounded-lg transition"
+                      >
+                        批次轉班
+                      </button>
+                      <button 
+                        onClick={handleBatchDeleteStudents}
+                        className="bg-red-50 hover:bg-red-100 text-red-600 font-semibold text-xs px-2.5 py-1.5 rounded-lg transition"
+                      >
+                        批次刪除
+                      </button>
+                    </div>
+                  )}
+
+                  <button 
+                    onClick={() => {
+                      setNewStudent({ ...newStudent, class: selectedClass });
+                      setShowAddStudentModal(true);
+                    }}
+                    className="bg-indigo-600 hover:bg-indigo-700 text-white font-semibold text-sm px-4 py-2 rounded-xl shadow transition"
+                  >
+                    + 新增單筆學生
+                  </button>
+                </div>
+              </div>
+
+              {/* 學生列表 Table */}
+              <div className="overflow-x-auto">
+                <table className="w-full text-left border-collapse">
+                  <thead>
+                    <tr className="bg-slate-50/75 border-b border-slate-100 text-slate-500 font-semibold text-sm">
+                      <th className="py-4 px-6 w-12">
+                        <input 
+                          type="checkbox"
+                          className="rounded text-indigo-600 focus:ring-indigo-500"
+                          checked={
+                            students.filter(s => s.class === selectedClass).length > 0 && 
+                            students.filter(s => s.class === selectedClass).every(s => selectedStudentIds.includes(s.id))
+                          }
+                          onChange={(e) => {
+                            const classSids = students.filter(s => s.class === selectedClass).map(s => s.id);
+                            if (e.target.checked) {
+                              // 全選當前班級
+                              setSelectedStudentIds([...new Set([...selectedStudentIds, ...classSids])]);
+                            } else {
+                              // 全不選當前班級
+                              setSelectedStudentIds(selectedStudentIds.filter(id => !classSids.includes(id)));
+                            }
+                          }}
+                        />
+                      </th>
+                      <th className="py-4 px-6">班級</th>
+                      <th className="py-4 px-6">座號</th>
+                      <th className="py-4 px-6">姓名</th>
+                      <th className="py-4 px-6 text-right">操作</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100 text-sm">
+                    {students.filter(s => s.class === selectedClass).length === 0 ? (
+                      <tr>
+                        <td colSpan="5" className="py-8 text-center text-slate-400">
+                          此班級尚無學生資料。請使用「批量匯入」或「新增單筆學生」建立！
+                        </td>
+                      </tr>
+                    ) : (
+                      students
+                        .filter(s => s.class === selectedClass)
+                        // 依座號排序
+                        .sort((a, b) => Number(a.seatNumber) - Number(b.seatNumber))
+                        .map(student => (
+                          <tr key={student.id} className="hover:bg-slate-50 transition">
+                            <td className="py-4 px-6">
+                              <input 
+                                type="checkbox"
+                                className="rounded text-indigo-600 focus:ring-indigo-500"
+                                checked={selectedStudentIds.includes(student.id)}
+                                onChange={(e) => {
+                                  if (e.target.checked) {
+                                    setSelectedStudentIds([...selectedStudentIds, student.id]);
+                                  } else {
+                                    setSelectedStudentIds(selectedStudentIds.filter(id => id !== student.id));
+                                  }
+                                }}
+                              />
+                            </td>
+                            <td className="py-4 px-6 font-medium text-slate-950">{student.class}</td>
+                            <td className="py-4 px-6 text-slate-500">{student.seatNumber}</td>
+                            <td className="py-4 px-6 font-semibold text-slate-900">{student.name}</td>
+                            <td className="py-4 px-6 text-right space-x-2">
+                              <button 
+                                onClick={() => setEditingStudent(student)}
+                                className="text-indigo-600 hover:text-indigo-900 hover:underline font-semibold"
+                              >
+                                編輯
+                              </button>
+                              <button 
+                                onClick={() => handleDeleteStudent(student.id)}
+                                className="text-red-500 hover:text-red-800 hover:underline font-semibold"
+                              >
+                                刪除
+                              </button>
+                            </td>
+                          </tr>
+                        ))
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* ========================================================
+            TAB 3: 收費項目設定
+            ======================================================== */}
+        {activeTab === 'fees' && (
+          <div className="space-y-6 animate-fadeIn">
+            <div className="flex justify-between items-center">
+              <div>
+                <h2 className="text-2xl font-bold text-slate-900">收費項目名目設定</h2>
+                <p className="text-slate-500 text-sm">建立不同的收費名目（例如班費、講義費等）與設定各項目的標準金額</p>
+              </div>
+              <button 
+                onClick={() => setShowAddFeeModal(true)}
+                className="bg-indigo-600 hover:bg-indigo-700 text-white font-semibold text-sm px-4 py-2.5 rounded-xl shadow transition flex items-center gap-2"
+              >
+                + 新增收費項目
+              </button>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              {fees.length === 0 ? (
+                <div className="col-span-full bg-white p-12 text-center text-slate-400 border border-dashed rounded-2xl">
+                  尚未建立任何收費項目。點擊右上方「新增收費項目」按鈕建立第一個費用！
+                </div>
+              ) : (
+                fees.map(fee => (
+                  <div key={fee.id} className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 flex flex-col justify-between">
+                    {editingFee?.id === fee.id ? (
+                      /* 編輯模式 */
+                      <div className="space-y-4">
+                        <div>
+                          <label className="block text-xs font-bold text-slate-400 mb-1">項目名稱</label>
+                          <input 
+                            type="text" 
+                            value={editingFee.name}
+                            onChange={(e) => setEditingFee({ ...editingFee, name: e.target.value })}
+                            className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-1.5 text-sm"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-xs font-bold text-slate-400 mb-1">預設單價 (NT$)</label>
+                          <input 
+                            type="number" 
+                            value={editingFee.defaultAmount}
+                            onChange={(e) => setEditingFee({ ...editingFee, defaultAmount: e.target.value })}
+                            className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-1.5 text-sm"
+                          />
+                        </div>
+                        <div className="flex justify-end gap-2 pt-2">
+                          <button 
+                            onClick={() => setEditingFee(null)}
+                            className="text-xs text-slate-500 px-3 py-1.5 hover:bg-slate-100 rounded"
+                          >
+                            取消
+                          </button>
+                          <button 
+                            onClick={handleUpdateFee}
+                            className="bg-indigo-600 text-white text-xs px-3 py-1.5 rounded hover:bg-indigo-700"
+                          >
+                            確認變更
+                          </button>
+                        </div>
+                      </div>
+                    ) : (
+                      /* 一般模式 */
+                      <>
+                        <div className="space-y-2">
+                          <div className="flex justify-between items-start">
+                            <span className="bg-indigo-50 text-indigo-700 font-semibold text-xs px-2.5 py-1 rounded-full">
+                              常規費用
+                            </span>
+                            <div className="space-x-2">
+                              <button 
+                                onClick={() => setEditingFee(fee)}
+                                className="text-slate-400 hover:text-slate-800 text-sm"
+                              >
+                                編輯
+                              </button>
+                              <button 
+                                onClick={() => handleDeleteFee(fee.id)}
+                                className="text-red-400 hover:text-red-700 text-sm"
+                              >
+                                刪除
+                              </button>
+                            </div>
+                          </div>
+                          <h4 className="font-extrabold text-slate-900 text-xl pt-2">{fee.name}</h4>
+                          <div className="text-3xl font-black text-slate-800">
+                            NT$ {fee.defaultAmount.toLocaleString()}
+                          </div>
+                        </div>
+                        <div className="mt-4 pt-4 border-t border-slate-100 text-xs text-slate-400">
+                          全體學生適用此基本定價
+                        </div>
+                      </>
+                    )}
+                  </div>
+                ))
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* ========================================================
+            TAB 4: 收費登記矩陣
+            ======================================================== */}
+        {activeTab === 'matrix' && (
+          <div className="space-y-6 animate-fadeIn">
+            <div className="flex flex-wrap justify-between items-center gap-4">
+              <div>
+                <h2 className="text-2xl font-bold text-slate-900">收費登記矩陣</h2>
+                <p className="text-slate-500 text-sm">直觀的交互式表格。點擊任何單元格可立即切換、客製化此生專屬應繳金額，並登記實繳狀態。</p>
+              </div>
+
+              {/* 匯出目前班級對應 Excel */}
+              <button 
+                onClick={exportClassPaymentCSV}
+                className="bg-emerald-600 hover:bg-emerald-700 text-white font-semibold text-sm px-4 py-2.5 rounded-xl shadow transition flex items-center gap-2"
+              >
+                📊 匯出此班 Excel (CSV)
+              </button>
+            </div>
+
+            {/* 繳費對照說明 */}
+            <div className="bg-white p-4 rounded-xl border border-slate-200 flex flex-wrap gap-6 items-center text-sm">
+              <span className="font-semibold text-slate-700">繳費狀態燈號說明：</span>
+              <div className="flex items-center gap-2">
+                <span className="w-3.5 h-3.5 rounded-full bg-emerald-500"></span>
+                <span className="text-slate-600 font-medium">已繳清 (實繳 = 應繳)</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="w-3.5 h-3.5 rounded-full bg-amber-500"></span>
+                <span className="text-slate-600 font-medium">部分繳納 (有實繳但不足額)</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="w-3.5 h-3.5 rounded-full bg-red-400"></span>
+                <span className="text-slate-600 font-medium">未繳 (尚未支付任何金額)</span>
+              </div>
+            </div>
+
+            {/* 交互大矩陣表格 */}
+            <div className="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
+              <div className="overflow-x-auto">
+                <table className="w-full text-left border-collapse table-fixed min-w-[800px]">
+                  <thead>
+                    <tr className="bg-slate-50 border-b border-slate-200 text-slate-600 font-bold text-sm">
+                      <th className="py-4 px-6 w-32 sticky left-0 bg-slate-50 border-r border-slate-200">座號 姓名</th>
+                      {fees.map(f => (
+                        <th key={f.id} className="py-4 px-4 text-center border-r border-slate-200">
+                          <div className="font-extrabold text-slate-800">{f.name}</div>
+                          <div className="text-xs text-slate-400 font-normal">預設: NT$ {f.defaultAmount}</div>
+                        </th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-150 text-sm">
+                    {students.filter(s => s.class === selectedClass).length === 0 ? (
+                      <tr>
+                        <td colSpan={fees.length + 1} className="py-12 text-center text-slate-400">
+                          這個班級裡還沒有學生。請先前往「學生名冊管理」建立學生名錄！
+                        </td>
+                      </tr>
+                    ) : (
+                      students
+                        .filter(s => s.class === selectedClass)
+                        .sort((a, b) => Number(a.seatNumber) - Number(b.seatNumber))
+                        .map(student => (
+                          <tr key={student.id} className="hover:bg-indigo-50/20 transition">
+                            {/* 學生欄 */}
+                            <td className="py-3 px-6 sticky left-0 bg-white font-bold text-slate-900 border-r border-slate-200 shadow-sm">
+                              <span className="text-xs text-slate-400 font-normal mr-1">{student.seatNumber}.</span>
+                              {student.name}
+                            </td>
+
+                            {/* 費用單元格 */}
+                            {fees.map(fee => {
+                              const pay = getPayment(student.id, fee.id, fee.defaultAmount);
+                              const isCustom = pay.customAmount !== undefined && pay.customAmount !== fee.defaultAmount;
+                              
+                              // 狀態外觀定義
+                              let badgeClass = "";
+                              let statusText = "";
+                              
+                              if (pay.status === 'paid') {
+                                badgeClass = "bg-emerald-50 hover:bg-emerald-100/80 border-emerald-200 text-emerald-800";
+                                statusText = "已繳清";
+                              } else if (pay.status === 'partial') {
+                                badgeClass = "bg-amber-50 hover:bg-amber-100/80 border-amber-200 text-amber-800";
+                                statusText = `部分 NT$${pay.paidAmount}`;
+                              } else {
+                                badgeClass = "bg-red-50 hover:bg-red-100/80 border-red-100 text-red-600";
+                                statusText = "未繳";
+                              }
+
+                              return (
+                                <td 
+                                  key={fee.id} 
+                                  className="p-2 border-r border-slate-150 text-center cursor-pointer transition select-none"
+                                  onClick={() => openPaymentModal(student, fee)}
+                                >
+                                  <div className={`mx-auto py-2.5 px-3 rounded-xl border font-bold text-xs flex flex-col justify-center gap-1 transition ${badgeClass}`}>
+                                    <span className="tracking-wide text-[11px]">{statusText}</span>
+                                    <div className="text-[10px] opacity-75 font-medium">
+                                      應繳: NT$ {pay.customAmount !== undefined ? pay.customAmount : fee.defaultAmount}
+                                      {isCustom && <span className="ml-1 text-indigo-600" title="自訂此生專屬應繳額">📝</span>}
+                                    </div>
+                                  </div>
+                                </td>
+                              );
+                            })}
+                          </tr>
+                        ))
+                    )}
+
+                    {/* 底部總收費統計列 (即時統計) */}
+                    {students.filter(s => s.class === selectedClass).length > 0 && (
+                      <tr className="bg-slate-100 font-extrabold text-xs text-slate-800 border-t border-slate-300">
+                        <td className="py-4 px-6 sticky left-0 bg-slate-100 border-r border-slate-200">
+                          目前實收統計 / 總應收
+                        </td>
+                        {fees.map(f => {
+                          const stat = getFeeStatsForClass(f.id, selectedClass);
+                          return (
+                            <td key={f.id} className="p-3 text-center border-r border-slate-200 space-y-1">
+                              <div className="text-indigo-700 text-sm">
+                                NT$ {stat.totalPaid.toLocaleString()} / NT$ {stat.totalExpected.toLocaleString()}
+                              </div>
+                              <div className="text-[10px] text-slate-500">
+                                收取進度: {stat.progress}% (已收{stat.paidCount}人/未收{stat.unpaidCount}人)
+                              </div>
+                            </td>
+                          );
+                        })}
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* ========================================================
+            TAB 5: 資料備份與 PWA 設定
+            ======================================================== */}
+        {activeTab === 'backup' && (
+          <div className="space-y-6 animate-fadeIn">
+            <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100">
+              <h3 className="font-extrabold text-slate-900 text-xl mb-2">💾 雲端備份、還原與 Excel 介面</h3>
+              <p className="text-slate-500 text-sm mb-6">所有的繳費登記與學生資料，均即時存儲於本裝置的瀏覽器快取中。為了防止系統清理快取造成資料遺失，建議定期下載系統備份檔。</p>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                {/* 備份還原與 CSV (Excel) */}
+                <div className="p-5 rounded-2xl bg-slate-50 border border-slate-200 space-y-4">
+                  <h4 className="font-bold text-slate-800 text-base flex items-center gap-1.5">
+                    系統 JSON 完整備份還原
+                  </h4>
+                  <p className="text-xs text-slate-400">打包完整的學生名冊、收費項目及所有缴費狀態，方便在其他裝置上完全復原。</p>
+                  
+                  <div className="flex flex-wrap gap-2 pt-2">
+                    <button 
+                      onClick={exportBackupJSON}
+                      className="bg-indigo-600 hover:bg-indigo-700 text-white font-semibold text-xs px-4 py-2.5 rounded-xl shadow-sm transition"
+                    >
+                      匯出完整系統備份 (.json)
+                    </button>
+                    
+                    <label className="bg-white hover:bg-slate-100 text-slate-700 border border-slate-200 font-semibold text-xs px-4 py-2.5 rounded-xl shadow-sm cursor-pointer transition inline-block">
+                      還原備份檔案
+                      <input 
+                        type="file" 
+                        accept=".json" 
+                        onChange={handleImportJSON}
+                        className="hidden" 
+                      />
+                    </label>
+                  </div>
+                </div>
+
+                {/* 學生 CSV 匯出匯入 */}
+                <div className="p-5 rounded-2xl bg-slate-50 border border-slate-200 space-y-4">
+                  <h4 className="font-bold text-slate-800 text-base">Excel (CSV) 學生名單快速匯入</h4>
+                  <p className="text-xs text-slate-400">您可以直接匯入現成的學生名單 CSV 檔。格式規範必須為三欄：<strong>班級, 座號, 姓名</strong> (第一行為標題列)。編碼請確保為 UTF-8 格式。</p>
+                  
+                  <div className="pt-2">
+                    <label className="bg-white hover:bg-slate-100 text-slate-700 border border-slate-200 font-semibold text-xs px-4 py-2.5 rounded-xl shadow-sm cursor-pointer transition inline-block">
+                      選擇 CSV 檔案匯入學生名冊
+                      <input 
+                        type="file" 
+                        accept=".csv" 
+                        onChange={handleImportStudentsCSV}
+                        className="hidden" 
+                      />
+                    </label>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* PWA 下載與啟用指引 */}
+            <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 space-y-4">
+              <div className="flex items-center gap-3">
+                <div className="bg-indigo-50 p-2.5 rounded-xl text-indigo-600">
+                  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 18h.01M8 21h8a2 2 0 002-2V5a2 2 0 00-2-2H8a2 2 0 00-2 2v14a2 2 0 002 2z" /></svg>
+                </div>
+                <div>
+                  <h3 className="font-extrabold text-slate-900 text-lg">行動 PWA 應用程式支援</h3>
+                  <p className="text-slate-400 text-xs">Charlie Fee APP 可安裝在您的手機或電腦桌面，即使在沒有網路的環境下也能完美離線記帳！</p>
+                </div>
+              </div>
+
+              <div className="bg-slate-50 p-5 rounded-2xl border border-slate-200 space-y-3">
+                <h4 className="font-bold text-slate-800 text-sm">如何安裝至您的裝置？</h4>
+                <ul className="text-xs text-slate-500 space-y-2 list-disc list-inside">
+                  <li><strong>電腦 (Chrome/Edge)：</strong> 點擊網址列右側的「安裝」小圖示 🖥️，即可一鍵加入您的應用程式區。</li>
+                  <li><strong>iPhone (Safari)：</strong> 點擊瀏覽器底部的「分享」按鈕 📤，選擇「加入主畫面」即可像一般 APP 般使用。</li>
+                  <li><strong>Android 手機 (Chrome)：</strong> 點擊右上角三點選單，選擇「安裝應用程式」或「加入主畫面」。</li>
+                </ul>
+
+                <div className="pt-4 border-t border-slate-200">
+                  <button 
+                    onClick={downloadPWAPackage}
+                    className="bg-indigo-600 hover:bg-indigo-700 text-white font-semibold text-xs px-4 py-2.5 rounded-xl shadow-md transition"
+                  >
+                    🛠️ 產生 PWA 整合部署包 (.json / .js)
+                  </button>
+                  <p className="text-[11px] text-slate-400 mt-2">點擊將會自動下載 manifest.json 及 sw.js 檔。若您將此系統發佈於自架伺服器上，將此兩檔案放於相同目錄即可完成實體 PWA 機制。</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+      </main>
+
+      {/* ========================================================
+          MODAL 區塊 (全彈出視窗整合)
+          ======================================================== */}
+      
+      {/* 1. 編輯學生 Modal */}
+      {editingStudent && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+          <div className="bg-white w-full max-w-md rounded-2xl shadow-2xl p-6 space-y-4 animate-scaleUp">
+            <div className="flex justify-between items-center pb-2 border-b">
+              <h4 className="text-lg font-bold text-slate-900">修改學生基本資料</h4>
+              <button onClick={() => setEditingStudent(null)} className="text-slate-400 hover:text-slate-600">✕</button>
+            </div>
+            <div className="space-y-3">
+              <div>
+                <label className="block text-xs font-bold text-slate-500 mb-1">班級</label>
+                <select 
+                  value={editingStudent.class}
+                  onChange={(e) => setEditingStudent({ ...editingStudent, class: e.target.value })}
+                  className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-sm"
+                >
+                  {classes.map(c => <option key={c} value={c}>{c}</option>)}
+                </select>
+              </div>
+              <div>
+                <label className="block text-xs font-bold text-slate-500 mb-1">座號</label>
+                <input 
+                  type="text" 
+                  value={editingStudent.seatNumber}
+                  onChange={(e) => setEditingStudent({ ...editingStudent, seatNumber: e.target.value })}
+                  className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-sm"
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-bold text-slate-500 mb-1">姓名</label>
+                <input 
+                  type="text" 
+                  value={editingStudent.name}
+                  onChange={(e) => setEditingStudent({ ...editingStudent, name: e.target.value })}
+                  className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-sm"
+                />
+              </div>
+            </div>
+            <div className="flex justify-end gap-2 pt-2">
+              <button 
+                onClick={() => setEditingStudent(null)}
+                className="text-xs text-slate-500 hover:bg-slate-100 px-4 py-2 rounded-xl"
+              >
+                取消
+              </button>
+              <button 
+                onClick={handleUpdateStudent}
+                className="bg-indigo-600 text-white font-semibold text-xs px-4 py-2 rounded-xl hover:bg-indigo-700 shadow"
+              >
+                保存修改
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 2. 新增單筆學生 Modal */}
+      {showAddStudentModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+          <div className="bg-white w-full max-w-md rounded-2xl shadow-2xl p-6 space-y-4">
+            <div className="flex justify-between items-center pb-2 border-b">
+              <h4 className="text-lg font-bold text-slate-900">手動新增單筆學生</h4>
+              <button onClick={() => setShowAddStudentModal(false)} className="text-slate-400 hover:text-slate-600">✕</button>
+            </div>
+            <div className="space-y-3">
+              <div>
+                <label className="block text-xs font-bold text-slate-500 mb-1">班級</label>
+                <select 
+                  value={newStudent.class}
+                  onChange={(e) => setNewStudent({ ...newStudent, class: e.target.value })}
+                  className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-sm"
+                >
+                  {classes.map(c => <option key={c} value={c}>{c}</option>)}
+                </select>
+              </div>
+              <div>
+                <label className="block text-xs font-bold text-slate-500 mb-1">座號</label>
+                <input 
+                  type="text" 
+                  placeholder="例如：05"
+                  value={newStudent.seatNumber}
+                  onChange={(e) => setNewStudent({ ...newStudent, seatNumber: e.target.value })}
+                  className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-sm"
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-bold text-slate-500 mb-1">姓名</label>
+                <input 
+                  type="text" 
+                  placeholder="例如：陳大同"
+                  value={newStudent.name}
+                  onChange={(e) => setNewStudent({ ...newStudent, name: e.target.value })}
+                  className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-sm"
+                />
+              </div>
+            </div>
+            <div className="flex justify-end gap-2 pt-2">
+              <button 
+                onClick={() => setShowAddStudentModal(false)}
+                className="text-xs text-slate-500 hover:bg-slate-100 px-4 py-2 rounded-xl"
+              >
+                取消
+              </button>
+              <button 
+                onClick={handleAddStudent}
+                className="bg-indigo-600 text-white font-semibold text-xs px-4 py-2 rounded-xl hover:bg-indigo-700 shadow"
+              >
+                確認新增
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 3. 快速批量匯入 Modal */}
+      {showBatchImportModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+          <div className="bg-white w-full max-w-lg rounded-2xl shadow-2xl p-6 space-y-4">
+            <div className="flex justify-between items-center pb-2 border-b">
+              <div>
+                <h4 className="text-lg font-bold text-slate-900">⚡ 快速批量匯入名單</h4>
+                <p className="text-xs text-slate-400">貼入清單即可快速完成學生匯入</p>
+              </div>
+              <button onClick={() => setShowBatchImportModal(false)} className="text-slate-400 hover:text-slate-600">✕</button>
+            </div>
+            <div className="space-y-4">
+              <div>
+                <label className="block text-xs font-bold text-slate-500 mb-1">1. 指定匯入班級</label>
+                <select 
+                  value={batchImportClass}
+                  onChange={(e) => setBatchImportClass(e.target.value)}
+                  className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-sm"
+                >
+                  <option value="">-- 請選擇班級 --</option>
+                  {classes.map(c => <option key={c} value={c}>{c}</option>)}
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-slate-500 mb-1">
+                  2. 輸入名單 (格式為：座號 姓名，每一行代表一位學生)
+                </label>
+                <textarea 
+                  rows="6"
+                  placeholder="01 王小明&#13;02 林美美&#13;03 張小華"
+                  value={batchImportText}
+                  onChange={(e) => setBatchImportText(e.target.value)}
+                  className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-sm font-mono focus:bg-white focus:ring-2 focus:ring-indigo-500 outline-none"
+                />
+              </div>
+
+              <div className="bg-amber-50 p-3 rounded-xl text-xs text-amber-800 space-y-1">
+                <span className="font-bold">💡 小技巧提示：</span>
+                <p>直接從 Excel / Word 複製兩欄（座號、姓名）整批貼在此處也可以正常運作哦！系統會自動用空格或逗號辨識。</p>
+              </div>
+            </div>
+            <div className="flex justify-end gap-2 pt-2">
+              <button 
+                onClick={() => setShowBatchImportModal(false)}
+                className="text-xs text-slate-500 hover:bg-slate-100 px-4 py-2 rounded-xl"
+              >
+                取消
+              </button>
+              <button 
+                onClick={handleBatchImport}
+                className="bg-emerald-600 hover:bg-emerald-700 text-white font-semibold text-xs px-4 py-2 rounded-xl shadow"
+              >
+                立即批量匯入
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 4. 批次編輯 (轉班) Modal */}
+      {showBatchEditModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+          <div className="bg-white w-full max-w-md rounded-2xl shadow-2xl p-6 space-y-4">
+            <div className="flex justify-between items-center pb-2 border-b">
+              <h4 className="text-lg font-bold text-slate-900">批量轉變學生班級</h4>
+              <button onClick={() => setShowBatchEditModal(false)} className="text-slate-400 hover:text-slate-600">✕</button>
+            </div>
+            <div className="space-y-3">
+              <p className="text-xs text-slate-500">已選定 {selectedStudentIds.length} 位學生，請指定搬移到的目標班級：</p>
+              <div>
+                <label className="block text-xs font-bold text-slate-400 mb-1">目標班級</label>
+                <select 
+                  value={batchEditTargetClass}
+                  onChange={(e) => setBatchEditTargetClass(e.target.value)}
+                  className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-sm"
+                >
+                  <option value="">-- 選擇目標班級 --</option>
+                  {classes.map(c => <option key={c} value={c}>{c}</option>)}
+                </select>
+              </div>
+            </div>
+            <div className="flex justify-end gap-2 pt-2">
+              <button 
+                onClick={() => setShowBatchEditModal(false)}
+                className="text-xs text-slate-500 hover:bg-slate-100 px-4 py-2 rounded-xl"
+              >
+                取消
+              </button>
+              <button 
+                onClick={handleBatchEditClass}
+                className="bg-indigo-600 text-white font-semibold text-xs px-4 py-2 rounded-xl hover:bg-indigo-700 shadow"
+              >
+                確定更動班級
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 5. 新增收費項目 Modal */}
+      {showAddFeeModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+          <div className="bg-white w-full max-w-md rounded-2xl shadow-2xl p-6 space-y-4">
+            <div className="flex justify-between items-center pb-2 border-b">
+              <h4 className="text-lg font-bold text-slate-900">建立全新收費項目</h4>
+              <button onClick={() => setShowAddFeeModal(false)} className="text-slate-400 hover:text-slate-600">✕</button>
+            </div>
+            <div className="space-y-3">
+              <div>
+                <label className="block text-xs font-bold text-slate-500 mb-1">收費項目名稱</label>
+                <input 
+                  type="text" 
+                  placeholder="例如：校外教學費"
+                  value={newFee.name}
+                  onChange={(e) => setNewFee({ ...newFee, name: e.target.value })}
+                  className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-sm"
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-bold text-slate-500 mb-1">預設收費金額 (元)</label>
+                <input 
+                  type="number" 
+                  placeholder="例如：1200"
+                  value={newFee.defaultAmount}
+                  onChange={(e) => setNewFee({ ...newFee, defaultAmount: e.target.value })}
+                  className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-sm"
+                />
+              </div>
+            </div>
+            <div className="flex justify-end gap-2 pt-2">
+              <button 
+                onClick={() => setShowAddFeeModal(false)}
+                className="text-xs text-slate-500 hover:bg-slate-100 px-4 py-2 rounded-xl"
+              >
+                取消
+              </button>
+              <button 
+                onClick={handleAddFee}
+                className="bg-indigo-600 text-white font-semibold text-xs px-4 py-2 rounded-xl hover:bg-indigo-700 shadow"
+              >
+                確認新增項目
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 6. 收費修改互動登記面板 (Matrix Modal) */}
+      {activePaymentModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+          <div className="bg-white w-full max-w-md rounded-2xl shadow-2xl p-6 space-y-4 animate-scaleUp">
+            <div className="flex justify-between items-center pb-2 border-b">
+              <div>
+                <h4 className="text-lg font-bold text-slate-900">登記學生收費資料</h4>
+                <p className="text-xs text-slate-400">目前學生：{activePaymentModal.studentName}</p>
+              </div>
+              <button onClick={() => setActivePaymentModal(null)} className="text-slate-400 hover:text-slate-600">✕</button>
+            </div>
+
+            <div className="space-y-4">
+              {/* 費用項目資訊 */}
+              <div className="bg-indigo-50/50 p-3.5 rounded-xl border border-indigo-100 flex justify-between items-center text-xs">
+                <div>
+                  <div className="font-bold text-indigo-900 text-sm">{activePaymentModal.feeName}</div>
+                  <div className="text-indigo-600">常規預設金額：NT$ {activePaymentModal.defaultAmount}</div>
+                </div>
+                <button 
+                  onClick={restoreDefaultPrice}
+                  className="bg-white hover:bg-indigo-100 text-indigo-700 border border-indigo-200 text-[10px] font-bold px-2 py-1.5 rounded-lg shadow-sm transition"
+                >
+                  一鍵恢復預設單價
+                </button>
+              </div>
+
+              {/* 此生專屬應繳金額區塊 */}
+              <div className="bg-slate-50 p-3.5 rounded-xl border border-slate-200">
+                <label className="block text-xs font-bold text-slate-700 mb-1">
+                  ✏️ 自訂此生專屬應繳金額 (若該生享有特定減免)
+                </label>
+                <div className="flex items-center gap-2">
+                  <span className="text-sm font-semibold text-slate-400">NT$</span>
+                  <input 
+                    type="number" 
+                    value={tempPaymentState.customAmount}
+                    onChange={(e) => setTempPaymentState({ ...tempPaymentState, customAmount: Number(e.target.value) })}
+                    className="flex-1 bg-white border border-slate-200 rounded-lg px-3 py-1.5 text-sm font-bold"
+                  />
+                </div>
+                <p className="text-[10px] text-slate-400 mt-1">此輸入框供該生有特別應繳額度時調整，預設為原價NT$ {activePaymentModal.defaultAmount}。</p>
+              </div>
+
+              {/* 繳費狀態 */}
+              <div>
+                <label className="block text-xs font-bold text-slate-500 mb-1.5">繳費狀態切換</label>
+                <div className="grid grid-cols-3 gap-2">
+                  {['paid', 'partial', 'unpaid'].map(status => {
+                    const statusMap = { 'paid': '已繳清', 'partial': '部分繳納', 'unpaid': '未繳' };
+                    const activeColor = {
+                      'paid': 'bg-emerald-500 text-white border-emerald-500',
+                      'partial': 'bg-amber-500 text-white border-amber-500',
+                      'unpaid': 'bg-red-500 text-white border-red-500'
+                    };
+                    const isSelected = tempPaymentState.status === status;
+                    
+                    return (
+                      <button
+                        key={status}
+                        onClick={() => {
+                          let paidVal = 0;
+                          if (status === 'paid') paidVal = tempPaymentState.customAmount;
+                          setTempPaymentState({ ...tempPaymentState, status, paidAmount: paidVal });
+                        }}
+                        className={`py-2 px-3 rounded-xl text-xs font-bold border transition text-center ${
+                          isSelected ? activeColor[status] : 'bg-slate-50 hover:bg-slate-100 border-slate-200 text-slate-600'
+                        }`}
+                      >
+                        {statusMap[status]}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* 若選擇「部分繳納」，顯示實繳金額輸入框 */}
+              {tempPaymentState.status === 'partial' && (
+                <div className="bg-amber-50/50 p-3.5 rounded-xl border border-amber-100 animate-scaleUp">
+                  <label className="block text-xs font-bold text-amber-900 mb-1">
+                    輸入已實繳金額
+                  </label>
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm font-bold text-amber-700">NT$</span>
+                    <input 
+                      type="number" 
+                      placeholder="已付金額"
+                      value={tempPaymentState.paidAmount}
+                      onChange={(e) => setTempPaymentState({ ...tempPaymentState, paidAmount: Number(e.target.value) })}
+                      className="flex-1 bg-white border border-amber-200 rounded-lg px-3 py-1.5 text-sm font-bold"
+                    />
+                  </div>
+                  <p className="text-[10px] text-amber-600 mt-1">此生尚需補繳：NT$ {tempPaymentState.customAmount - tempPaymentState.paidAmount} 元</p>
+                </div>
+              )}
+            </div>
+
+            <div className="flex justify-end gap-2 pt-2 border-t mt-4">
+              <button 
+                onClick={() => setActivePaymentModal(null)}
+                className="text-xs text-slate-500 hover:bg-slate-100 px-4 py-2 rounded-xl"
+              >
+                取消
+              </button>
+              <button 
+                onClick={savePaymentStatus}
+                className="bg-indigo-600 text-white font-semibold text-xs px-4 py-2 rounded-xl hover:bg-indigo-700 shadow"
+              >
+                確定登記變更
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 頁尾 */}
+      <footer className="bg-white border-t border-slate-200 py-6 text-center text-xs text-slate-400">
+        <div className="max-w-7xl mx-auto px-4 space-y-1">
+          <p>© 2026 查理學生收費管理系統. All Rights Reserved.</p>
+          <p>支援完整離線操作 (LocalStorage 機制) 搭配備份匯出功能</p>
+        </div>
+      </footer>
+    </div>
+  );
+}
