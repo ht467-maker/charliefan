@@ -33,8 +33,6 @@
     <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" crossorigin></script>
     <!-- Babel for JSX compilation -->
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
-    <!-- Lucide Icons -->
-    <script src="https://unpkg.com/lucide@latest"></script>
     <!-- SheetJS for Excel Import/Export -->
     <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
     
@@ -63,7 +61,7 @@
         if ('serviceWorker' in navigator) {
             window.addEventListener('load', () => {
                 const swCode = `
-                    const CACHE_NAME = 'charlie-fee-v1';
+                    const CACHE_NAME = 'charlie-fee-v4';
                     const urlsToCache = [
                         './',
                         './index.html'
@@ -107,23 +105,158 @@
             { id: "f3", name: "英文講義費", amount: 250 }
         ];
         const DEFAULT_PAYMENTS = {
-            // key 格式為: "studentId_feeId"
-            "s1_f1": { status: "已繳清", customAmount: 500, paidAmount: 500 },
-            "s1_f2": { status: "部分繳納", customAmount: 1200, paidAmount: 600 },
-            "s1_f3": { status: "未繳", customAmount: 250, paidAmount: 0 },
-            "s2_f1": { status: "已繳清", customAmount: 500, paidAmount: 500 },
-            "s2_f2": { status: "已繳清", customAmount: 1000, paidAmount: 1000 }, // 自訂應繳
-            "s3_f1": { status: "未繳", customAmount: 500, paidAmount: 0 }
+            "s1_f1": { status: "已繳清", customAmount: 500, paidAmount: 500, paidAt: "2026-05-29 14:30" },
+            "s1_f2": { status: "部分繳納", customAmount: 1200, paidAmount: 600, paidAt: "" },
+            "s1_f3": { status: "未繳", customAmount: 250, paidAmount: 0, paidAt: "" },
+            "s2_f1": { status: "已繳清", customAmount: 500, paidAmount: 500, paidAt: "2026-05-29 16:15" },
+            "s2_f2": { status: "已繳清", customAmount: 1000, paidAmount: 1000, paidAt: "2026-05-29 17:00" },
+            "s3_f1": { status: "未繳", customAmount: 500, paidAmount: 0, paidAt: "" }
         };
 
-        // 將修改繳費面板抽離成獨立的 React 元件，避免在條件渲染區塊內呼叫 Hook 違反 React 的規定。
+        // 安全的 React 原生 SVG 圖示元件 (避免任何外部 DOM 突變導致 removeChild 錯誤)
+        function SvgIcon({ name, className = "w-4 h-4" }) {
+            const icons = {
+                "wallet": (
+                    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M21 12V7H5a2 2 0 0 1 0-4h14v4"/>
+                        <path d="M3 5v14a2 2 0 0 0 2 2h16v-5"/>
+                        <path d="M18 12a2 2 0 0 0 0 4h4v-4Z"/>
+                    </svg>
+                ),
+                "layout-dashboard": (
+                    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <rect width="7" height="9" x="3" y="3" rx="1"/>
+                        <rect width="7" height="5" x="14" y="3" rx="1"/>
+                        <rect width="7" height="9" x="14" y="10" rx="1"/>
+                        <rect width="7" height="5" x="3" y="14" rx="1"/>
+                    </svg>
+                ),
+                "users": (
+                    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/>
+                        <circle cx="9" cy="7" r="4"/>
+                        <path d="M22 21v-2a4 4 0 0 0-3-3.87"/>
+                        <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+                    </svg>
+                ),
+                "receipt": (
+                    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M4 2v20l2-1 2 1 2-1 2 1 2-1 2 1 2-1 2 1V2l-2 1-2-1-2 1-2-1-2 1-2-1-2 1Z"/>
+                        <path d="M16 8H8"/><path d="M16 12H8"/><path d="M13 16H8"/>
+                    </svg>
+                ),
+                "grid-3x3": (
+                    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <rect width="18" height="18" x="3" y="3" rx="2"/>
+                        <path d="M3 9h18"/><path d="M3 15h18"/><path d="M9 3v18"/><path d="M15 3v18"/>
+                    </svg>
+                ),
+                "file-spreadsheet": (
+                    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/>
+                        <path d="M14 2v4a2 2 0 0 0 2 2h4"/>
+                        <path d="M8 13h8"/><path d="M8 17h8"/><path d="M8 9h1"/>
+                    </svg>
+                ),
+                "plus": (
+                    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <line x1="12" y1="5" x2="12" y2="19"/>
+                        <line x1="5" y1="12" x2="19" y2="12"/>
+                    </svg>
+                ),
+                "trash-2": (
+                    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M3 6h18"/>
+                        <path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/>
+                        <path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/>
+                        <line x1="10" y1="11" x2="10" y2="17"/>
+                        <line x1="14" y1="11" x2="14" y2="17"/>
+                    </svg>
+                ),
+                "file-input": (
+                    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M4 22h14a2 2 0 0 0 2-2V7l-5-5H6a2 2 0 0 0-2 2v4"/>
+                        <path d="M14 2v4a2 2 0 0 0 2 2h4"/>
+                        <path d="M2 15h10"/><path d="m9 12 3 3-3 3"/>
+                    </svg>
+                ),
+                "edit-3": (
+                    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M12 20h9"/>
+                        <path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"/>
+                    </svg>
+                ),
+                "edit-2": (
+                    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M12 20h9"/>
+                        <path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"/>
+                    </svg>
+                ),
+                "edit": (
+                    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M12 20h9"/>
+                        <path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"/>
+                    </svg>
+                ),
+                "banknote": (
+                    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <rect width="20" height="12" x="2" y="6" rx="2"/>
+                        <circle cx="12" cy="12" r="2"/>
+                        <path d="M6 12h.01M18 12h.01"/>
+                    </svg>
+                ),
+                "check-circle": (
+                    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/>
+                        <polyline points="22 4 12 14.01 9 11.01"/>
+                    </svg>
+                ),
+                "clock": (
+                    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <circle cx="12" cy="12" r="10"/>
+                        <polyline points="12 6 12 12 16 14"/>
+                    </svg>
+                ),
+                "x": (
+                    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <line x1="18" y1="6" x2="6" y2="18"/>
+                        <line x1="6" y1="6" x2="18" y2="18"/>
+                    </svg>
+                ),
+                "upload-cloud": (
+                    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M4 14.899A7 7 0 1 1 15.71 8h1.79a4.5 4.5 0 0 1 2.5 8.242"/>
+                        <path d="M12 12v9"/><path d="m16 16-4-4-4 4"/>
+                    </svg>
+                ),
+                "alert-triangle": (
+                    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/>
+                        <line x1="12" y1="9" x2="12" y2="13"/>
+                        <line x1="12" y1="17" x2="12.01" y2="17"/>
+                    </svg>
+                ),
+                "download": (
+                    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                        <polyline points="7 10 12 15 17 10"/>
+                        <line x1="12" y1="15" x2="12" y2="3"/>
+                    </svg>
+                )
+            };
+            return icons[name] || (
+                <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <circle cx="12" cy="12" r="10"/>
+                </svg>
+            );
+        }
+
+        // 繳費狀態編輯面板 Component
         function PaymentModal({ student, fee, record, onCancel, onSave, showToast }) {
-            // 建立內部的暫存狀態
             const [status, setStatus] = useState(record.status);
             const [customAmount, setCustomAmount] = useState(record.customAmount);
             const [paidAmount, setPaidAmount] = useState(record.paidAmount);
 
-            // 當外部 record 改變時重新同步內部狀態
             useEffect(() => {
                 setStatus(record.status);
                 setCustomAmount(record.customAmount);
@@ -140,21 +273,20 @@
             };
 
             return (
-                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm">
+                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-fade-in">
                     <div className="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl border border-slate-100 flex flex-col gap-4">
                         <div className="flex justify-between items-center">
                             <div>
                                 <span className="text-xs bg-slate-100 px-2 py-0.5 rounded-full font-medium text-slate-500">{student.class} No.{student.seatNo}</span>
                                 <h3 className="font-bold text-lg text-slate-800 mt-1">{student.name} — {fee.name}</h3>
                             </div>
-                            <button onClick={onCancel} className="text-slate-400 hover:text-slate-600">
-                                <i data-lucide="x" className="w-5 h-5"></i>
+                            <button type="button" onClick={onCancel} className="text-slate-400 hover:text-slate-600">
+                                <SvgIcon name="x" className="w-5 h-5" />
                             </button>
                         </div>
 
                         <hr className="border-slate-100" />
 
-                        {/* 第一部分：自訂此生應繳 */}
                         <div className="bg-slate-50 p-4 rounded-xl border border-slate-100">
                             <label className="block text-xs font-bold text-slate-600 mb-1">
                                 此生專屬應繳金額
@@ -172,6 +304,7 @@
                                     className="flex-1 bg-white border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-brand-500 font-semibold text-slate-800"
                                 />
                                 <button 
+                                    type="button"
                                     onClick={() => {
                                         setCustomAmount(fee.amount);
                                         if (status === "已繳清") setPaidAmount(fee.amount);
@@ -184,7 +317,6 @@
                             </div>
                         </div>
 
-                        {/* 第二部分：繳費狀態 */}
                         <div>
                             <label className="block text-xs font-semibold text-slate-500 mb-2">繳費狀態切換</label>
                             <div className="grid grid-cols-3 gap-2">
@@ -197,6 +329,7 @@
                                     }
                                     return (
                                         <button
+                                            type="button"
                                             key={st}
                                             onClick={() => handleStatusChange(st)}
                                             className={`py-2 border rounded-xl text-xs font-bold transition-all ${btnStyle}`}
@@ -208,7 +341,6 @@
                             </div>
                         </div>
 
-                        {/* 第三部分：已繳金額 */}
                         {status === "部分繳納" && (
                             <div>
                                 <label className="block text-xs font-semibold text-slate-500 mb-1.5">已收金額 (部分繳納)</label>
@@ -223,15 +355,24 @@
                             </div>
                         )}
 
-                        {/* 控制按鈕 */}
+                        {/* 註記時間說明 */}
+                        {status === "已繳清" && (
+                            <div className="text-[11px] text-slate-400 bg-slate-50 p-2.5 rounded-lg border border-slate-100 flex items-center gap-1.5">
+                                <SvgIcon name="clock" className="w-3.5 h-3.5 text-brand-500" />
+                                <span>儲存後，系統將自動註記當下確切的繳清日期與時間。</span>
+                            </div>
+                        )}
+
                         <div className="flex justify-end gap-2 mt-4">
                             <button 
+                                type="button"
                                 onClick={onCancel} 
                                 className="px-4 py-2 text-slate-500 hover:bg-slate-50 rounded-xl text-sm font-semibold"
                             >
                                 取消
                             </button>
                             <button 
+                                type="button"
                                 onClick={() => onSave(student.id, fee.id, status, customAmount, paidAmount)} 
                                 className="px-4 py-2 bg-brand-600 hover:bg-brand-700 text-white rounded-xl text-sm font-semibold shadow-md"
                             >
@@ -243,9 +384,43 @@
             );
         }
 
+        // 自訂安全性確認視窗元件 (取代 iframe 中會失效的 confirm())
+        function CustomConfirmModal({ isOpen, title, message, onConfirm, onCancel }) {
+            if (!isOpen) return null;
+            return (
+                <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-sm animate-fade-in">
+                    <div className="bg-white rounded-2xl max-w-sm w-full p-6 shadow-2xl border border-slate-200/50 flex flex-col gap-4 text-center">
+                        <div className="mx-auto bg-rose-50 text-rose-600 p-3 rounded-full w-fit">
+                            <SvgIcon name="alert-triangle" className="w-8 h-8" />
+                        </div>
+                        <div>
+                            <h3 className="font-bold text-lg text-slate-950">{title}</h3>
+                            <p className="text-sm text-slate-500 mt-2 leading-relaxed">{message}</p>
+                        </div>
+                        <div className="grid grid-cols-2 gap-3.5 mt-2">
+                            <button 
+                                type="button"
+                                onClick={onCancel}
+                                className="py-2.5 border border-slate-200 hover:bg-slate-50 text-slate-700 text-sm font-semibold rounded-xl transition-all"
+                            >
+                                取消
+                            </button>
+                            <button 
+                                type="button"
+                                onClick={onConfirm}
+                                className="py-2.5 bg-rose-600 hover:bg-rose-700 text-white text-sm font-semibold rounded-xl transition-all shadow-md shadow-rose-600/15"
+                            >
+                                確認刪除
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            );
+        }
+
         function App() {
             // --- 狀態管理 ---
-            const [activeTab, setActiveTab] = useState('dashboard'); // dashboard, students, fees, matrix, backup
+            const [activeTab, setActiveTab] = useState('dashboard');
             const [classes, setClasses] = useState(() => {
                 const saved = localStorage.getItem('charlie_classes');
                 return saved ? JSON.parse(saved) : DEFAULT_CLASSES;
@@ -268,6 +443,10 @@
             const [editingStudent, setEditingStudent] = useState(null);
             const [newStudent, setNewStudent] = useState({ class: '', seatNo: '', name: '' });
             
+            // 班級編輯與管理
+            const [editingClassName, setEditingClassName] = useState('');
+            const [showClassEditInput, setShowClassEditInput] = useState(false);
+
             // 批量匯入相關狀態
             const [importClass, setImportClass] = useState(classes[0] || '');
             const [importRawText, setImportRawText] = useState('');
@@ -284,17 +463,22 @@
 
             // 收費登記矩陣相關狀態
             const [matrixClassFilter, setMatrixClassFilter] = useState('all');
-            const [paymentModal, setPaymentModal] = useState(null); // { student, fee }
+            const [paymentModal, setPaymentModal] = useState(null);
 
-            // 通知提醒狀態
+            // 安全自訂確認視窗狀態
+            const [confirmModal, setConfirmModal] = useState(null); // { title: '', message: '', onConfirm: () => {} }
+
             const [toast, setToast] = useState(null);
 
-            // 當 classes 改變時，更新相關的預設下拉選項
             useEffect(() => {
                 if (classes.length > 0) {
                     if (!selectedClass) setSelectedClass(classes[0]);
                     if (!importClass) setImportClass(classes[0]);
                     if (!batchClassFilter) setBatchClassFilter(classes[0]);
+                } else {
+                    setSelectedClass('');
+                    setImportClass('');
+                    setBatchClassFilter('');
                 }
             }, [classes]);
 
@@ -312,7 +496,6 @@
                 localStorage.setItem('charlie_payments', JSON.stringify(payments));
             }, [payments]);
 
-            // 顯示 Toast 訊息
             const showToast = (message, type = 'success') => {
                 setToast({ message, type });
                 setTimeout(() => setToast(null), 3000);
@@ -326,15 +509,69 @@
                     showToast('班級名稱已存在', 'error');
                     return;
                 }
-                setClasses([...classes, trimmed]);
+                const updatedClasses = [...classes, trimmed];
+                setClasses(updatedClasses);
+                setSelectedClass(trimmed);
                 showToast(`已成功建立班級「${trimmed}」`);
             };
 
-            const handleDeleteClass = (className) => {
-                if (confirm(`確定要刪除「${className}」嗎？這將不會刪除該班的學生，但他們將失去班級關聯。`)) {
-                    setClasses(classes.filter(c => c !== className));
-                    showToast(`已刪除班級「${className}」`);
+            const handleRenameClass = (oldName, newName) => {
+                const trimmed = newName.trim();
+                if (!trimmed) return;
+                if (trimmed === oldName) {
+                    setShowClassEditInput(false);
+                    return;
                 }
+                if (classes.includes(trimmed)) {
+                    showToast('此班級名稱已存在', 'error');
+                    return;
+                }
+                setClasses(classes.map(c => c === oldName ? trimmed : c));
+                setStudents(students.map(s => s.class === oldName ? { ...s, class: trimmed } : s));
+                
+                if (selectedClass === oldName) setSelectedClass(trimmed);
+                if (importClass === oldName) setImportClass(trimmed);
+                if (batchClassFilter === oldName) setBatchClassFilter(trimmed);
+                if (matrixClassFilter === oldName) setMatrixClassFilter(trimmed);
+
+                setShowClassEditInput(false);
+                showToast(`班級「${oldName}」已成功重新命名為「${trimmed}」，且已同步更新學生名單`);
+            };
+
+            // 安全地使用自訂確認視窗來進行班級刪除 (徹底根除 iframe 封鎖問題)
+            const handleDeleteClass = (className) => {
+                setConfirmModal({
+                    title: "確認刪除班級",
+                    message: `您確定要刪除「${className}」嗎？這將會一併刪除該班級的所有學生及所有相關繳費紀錄，此動作無法復原。`,
+                    onConfirm: () => {
+                        const targetStudentIds = students.filter(s => s.class === className).map(s => s.id);
+                        const remainingClasses = classes.filter(c => c !== className);
+                        
+                        setClasses(remainingClasses);
+                        setStudents(students.filter(s => s.class !== className));
+                        
+                        const newPayments = { ...payments };
+                        Object.keys(newPayments).forEach(key => {
+                            const studentId = key.split('_')[0];
+                            if (targetStudentIds.includes(studentId)) {
+                                delete newPayments[key];
+                            }
+                        });
+                        setPayments(newPayments);
+
+                        const nextSelected = remainingClasses.length > 0 ? remainingClasses[0] : '';
+                        setSelectedClass(nextSelected);
+                        setImportClass(nextSelected);
+                        setBatchClassFilter(nextSelected);
+                        if (matrixClassFilter === className) {
+                            setMatrixClassFilter('all');
+                        }
+
+                        setShowClassEditInput(false);
+                        setConfirmModal(null); // 關閉自訂確認視窗
+                        showToast(`已成功刪除班級「${className}」及相關資料`);
+                    }
+                });
             };
 
             // --- 學生管理邏輯 ---
@@ -356,22 +593,27 @@
                 showToast('學生資料已更新');
             };
 
+            // 安全地使用自訂確認視窗來刪除學生
             const handleDeleteStudent = (studentId, studentName) => {
-                if (confirm(`確定要刪除學生「${studentName}」嗎？相關繳費紀錄也將一併移除。`)) {
-                    setStudents(students.filter(s => s.id !== studentId));
-                    // 清理相關繳費紀錄
-                    const newPayments = { ...payments };
-                    Object.keys(newPayments).forEach(key => {
-                        if (key.startsWith(`${studentId}_`)) {
-                            delete newPayments[key];
-                        }
-                    });
-                    setPayments(newPayments);
-                    showToast(`已刪除學生「${studentName}」`);
-                }
+                setConfirmModal({
+                    title: "確認刪除學生",
+                    message: `確定要刪除學生「${studentName}」嗎？該生的繳費登記與歷史進度將一併被徹底移除。`,
+                    onConfirm: () => {
+                        setStudents(students.filter(s => s.id !== studentId));
+                        const newPayments = { ...payments };
+                        Object.keys(newPayments).forEach(key => {
+                            if (key.startsWith(`${studentId}_`)) {
+                                delete newPayments[key];
+                            }
+                        });
+                        setPayments(newPayments);
+                        setConfirmModal(null);
+                        showToast(`已成功刪除學生「${studentName}」`);
+                    }
+                });
             };
 
-            // 批量匯入邏輯 (格式：座號 姓名 或 座號,姓名 一行一個)
+            // 批量匯入邏輯
             const handleBatchImport = () => {
                 if (!importClass) {
                     showToast('請先選擇班級', 'error');
@@ -390,11 +632,10 @@
                     const cleanLine = line.trim();
                     if (!cleanLine) return;
 
-                    // 支援空白、逗號、Tab 分割
                     const parts = cleanLine.split(/[\s,，\t]+/);
                     if (parts.length >= 2) {
-                        const seatNo = parts[0].padStart(2, '0'); // 自動補零
-                        const name = parts.slice(1).join(' '); // 姓名中若有空格則合併
+                        const seatNo = parts[0].padStart(2, '0');
+                        const name = parts.slice(1).join(' ');
                         addedStudents.push({
                             id: 'student_' + Math.random().toString(36).substr(2, 9) + '_' + Date.now(),
                             class: importClass,
@@ -415,7 +656,7 @@
                 }
             };
 
-            // 大量批次編輯學生邏輯 (載入該班現有學生，編輯後覆蓋)
+            // 大量批次編輯學生
             const handleOpenBatchEdit = () => {
                 if (!batchClassFilter) {
                     showToast('請選擇要編輯的班級', 'error');
@@ -452,7 +693,6 @@
                     }
                 });
 
-                // 先移除該班舊有學生，再補入新的
                 const otherClassStudents = students.filter(s => s.class !== batchClassFilter);
                 setStudents([...otherClassStudents, ...updatedStudentsForClass]);
                 setShowBatchEditModal(false);
@@ -484,24 +724,28 @@
                 showToast('費用項目已更新');
             };
 
+            // 安全地使用自訂確認視窗來刪除收費項目
             const handleDeleteFee = (feeId, feeName) => {
-                if (confirm(`確定要刪除「${feeName}」嗎？所有學生的此項繳費登記都將被刪除。`)) {
-                    setFees(fees.filter(f => f.id !== feeId));
-                    // 清理相關繳費紀錄
-                    const newPayments = { ...payments };
-                    Object.keys(newPayments).forEach(key => {
-                        if (key.endsWith(`_${feeId}`)) {
-                            delete newPayments[key];
-                        }
-                    });
-                    setPayments(newPayments);
-                    showToast(`已刪除費用項目「${feeName}」`);
-                }
+                setConfirmModal({
+                    title: "確認刪除收費項目",
+                    message: `確定要刪除「${feeName}」嗎？所有學生的此項繳費歷史紀錄都將被永久刪除。`,
+                    onConfirm: () => {
+                        setFees(fees.filter(f => f.id !== feeId));
+                        const newPayments = { ...payments };
+                        Object.keys(newPayments).forEach(key => {
+                            if (key.endsWith(`_${feeId}`)) {
+                                delete newPayments[key];
+                            }
+                        });
+                        setPayments(newPayments);
+                        setConfirmModal(null);
+                        showToast(`已刪除費用項目「${feeName}」`);
+                    }
+                });
             };
 
 
             // --- 收費登記矩陣邏輯 ---
-            // 取得特定學生、特定費用的繳費狀態 (若無紀錄則回傳未繳及預設應繳金額)
             const getStudentPayment = (studentId, feeId) => {
                 const record = payments[`${studentId}_${feeId}`];
                 const feeItem = fees.find(f => f.id === feeId);
@@ -511,59 +755,53 @@
                     return {
                         status: "未繳",
                         customAmount: defaultAmount,
-                        paidAmount: 0
+                        paidAmount: 0,
+                        paidAt: ""
                     };
                 }
                 return {
                     status: record.status || "未繳",
                     customAmount: record.customAmount !== undefined ? record.customAmount : defaultAmount,
-                    paidAmount: record.paidAmount || 0
+                    paidAmount: record.paidAmount || 0,
+                    paidAt: record.paidAt || ""
                 };
             };
 
-            // 快速循環切換狀態
-            const handleQuickTogglePayment = (studentId, feeId) => {
-                const current = getStudentPayment(studentId, feeId);
-                let nextStatus = "未繳";
-                let nextPaid = 0;
-
-                if (current.status === "未繳") {
-                    nextStatus = "已繳清";
-                    nextPaid = current.customAmount;
-                } else if (current.status === "已繳清") {
-                    nextStatus = "部分繳納";
-                    nextPaid = Math.floor(current.customAmount / 2); // 預設半數
-                } else {
-                    nextStatus = "未繳";
-                    nextPaid = 0;
-                }
-
-                setPayments(prev => ({
-                    ...prev,
-                    [`${studentId}_${feeId}`]: {
-                        status: nextStatus,
-                        customAmount: current.customAmount,
-                        paidAmount: nextPaid
-                    }
-                }));
-            };
-
-            // 儲存修改繳費面板
+            // 儲存繳費面板修改：當狀態為已繳清時，若原本沒有記錄時間，自動寫入當前的年月日時分
             const handleSavePaymentModal = (studentId, feeId, status, customAmount, paidAmount) => {
                 let actualPaid = paidAmount;
-                if (status === "已繳清") actualPaid = customAmount;
-                if (status === "未繳") actualPaid = 0;
+                let paidTime = "";
+
+                if (status === "已繳清") {
+                    actualPaid = customAmount;
+                    const originalRecord = payments[`${studentId}_${feeId}`];
+                    // 🟢 如果原本就是已繳清且有時間，則保留原時間；否則生成當前時間
+                    if (originalRecord && originalRecord.status === "已繳清" && originalRecord.paidAt) {
+                        paidTime = originalRecord.paidAt;
+                    } else {
+                        const now = new Date();
+                        const year = now.getFullYear();
+                        const month = String(now.getMonth() + 1).padStart(2, '0');
+                        const date = String(now.getDate()).padStart(2, '0');
+                        const hours = String(now.getHours()).padStart(2, '0');
+                        const minutes = String(now.getMinutes()).padStart(2, '0');
+                        paidTime = `${year}-${month}-${date} ${hours}:${minutes}`;
+                    }
+                } else if (status === "未繳") {
+                    actualPaid = 0;
+                }
 
                 setPayments(prev => ({
                     ...prev,
                     [`${studentId}_${feeId}`]: {
                         status,
                         customAmount,
-                        paidAmount: actualPaid
+                        paidAmount: actualPaid,
+                        paidAt: paidTime
                     }
                 }));
                 setPaymentModal(null);
-                showToast("繳費設定已更新");
+                showToast("繳費設定已更新，已自動註記對帳時間");
             };
 
 
@@ -591,7 +829,6 @@
                 };
             }, [students, fees, payments]);
 
-            // 計算各單項收費目的的統計
             const getFeeStats = (feeId) => {
                 let expected = 0;
                 let received = 0;
@@ -617,7 +854,6 @@
                 try {
                     const wb = XLSX.utils.book_new();
 
-                    // 1. 學生名冊
                     const studentData = students.map(s => ({
                         "班級": s.class,
                         "座號": s.seatNo,
@@ -626,7 +862,6 @@
                     const wsStudents = XLSX.utils.json_to_sheet(studentData);
                     XLSX.utils.book_append_sheet(wb, wsStudents, "學生名冊");
 
-                    // 2. 收費項目
                     const feeData = fees.map(f => ({
                         "費用名稱": f.name,
                         "預設金額": f.amount
@@ -634,7 +869,6 @@
                     const wsFees = XLSX.utils.json_to_sheet(feeData);
                     XLSX.utils.book_append_sheet(wb, wsFees, "收費項目");
 
-                    // 3. 繳費矩陣明細
                     const matrixData = students.map(s => {
                         const row = {
                             "班級": s.class,
@@ -646,6 +880,7 @@
                             row[`${f.name}_狀態`] = p.status;
                             row[`${f.name}_應繳金額`] = p.customAmount;
                             row[`${f.name}_已繳金額`] = p.paidAmount;
+                            row[`${f.name}_繳清時間`] = p.paidAt || "";
                         });
                         return row;
                     });
@@ -670,7 +905,6 @@
                         const data = evt.target.result;
                         const workbook = XLSX.read(data, { type: 'binary' });
 
-                        // 試圖讀取「學生名冊」分頁
                         const wsStudents = workbook.Sheets["學生名冊"];
                         let importedStudents = [];
                         let importedClasses = [...classes];
@@ -690,7 +924,6 @@
                             });
                         }
 
-                        // 試圖讀取「收費項目」分頁
                         const wsFees = workbook.Sheets["收費項目"];
                         let importedFees = [];
                         if (wsFees) {
@@ -702,25 +935,25 @@
                             }));
                         }
 
-                        // 試圖讀取並還原「收費進度大表」
                         const wsMatrix = workbook.Sheets["收費進度大表"];
                         let importedPayments = {};
                         if (wsMatrix && importedStudents.length > 0 && importedFees.length > 0) {
                             const rawMatrix = XLSX.utils.sheet_to_json(wsMatrix);
                             rawMatrix.forEach(row => {
-                                // 比對姓名與班級找出對應的學生
                                 const student = importedStudents.find(s => s.name === row["姓名"] && s.class === row["班級"]);
                                 if (student) {
                                     importedFees.forEach(fee => {
                                         const statusKey = `${fee.name}_狀態`;
                                         const customKey = `${fee.name}_應繳金額`;
                                         const paidKey = `${fee.name}_已繳金額`;
+                                        const timeKey = `${fee.name}_繳清時間`;
 
                                         if (row[statusKey] !== undefined) {
                                             importedPayments[`${student.id}_${fee.id}`] = {
                                                 status: row[statusKey] || "未繳",
                                                 customAmount: parseFloat(row[customKey] !== undefined ? row[customKey] : fee.amount),
-                                                paidAmount: parseFloat(row[paidKey] || 0)
+                                                paidAmount: parseFloat(row[paidKey] || 0),
+                                                paidAt: row[timeKey] || ""
                                             };
                                         }
                                     });
@@ -728,14 +961,13 @@
                             });
                         }
 
-                        // 更新狀態
                         if (importedClasses.length > 0) setClasses(importedClasses);
                         if (importedStudents.length > 0) setStudents(importedStudents);
                         if (importedFees.length > 0) setFees(importedFees);
                         if (Object.keys(importedPayments).length > 0) setPayments(importedPayments);
 
                         showToast("Excel 資料匯入並還原成功！");
-                        e.target.value = null; // 清空 input
+                        e.target.value = null;
                     } catch (error) {
                         console.error(error);
                         showToast("解析 Excel 檔案失敗，請確保格式正確", "error");
@@ -746,7 +978,6 @@
 
 
             // --- UI 渲染輔助 ---
-            // 根據選定的班級過濾學生
             const filteredStudents = useMemo(() => {
                 if (activeTab === 'students') {
                     return students.filter(s => s.class === selectedClass)
@@ -765,12 +996,12 @@
 
             return (
                 <div className="min-h-screen flex flex-col md:flex-row">
-                    {/* 左側手機/桌面共用 Sidebar */}
+                    {/* 左側 Sidebar */}
                     <aside className="w-full md:w-64 bg-slate-900 text-slate-100 flex flex-col shrink-0 shadow-lg border-r border-slate-800">
                         <div className="p-6 border-b border-slate-800 flex items-center justify-between">
                             <div className="flex items-center gap-3">
                                 <div className="bg-brand-500 p-2 rounded-xl text-white shadow-md shadow-brand-500/20">
-                                    <i data-lucide="wallet" className="w-6 h-6"></i>
+                                    <SvgIcon name="wallet" className="w-6 h-6" />
                                 </div>
                                 <div>
                                     <h1 className="font-bold text-lg leading-tight">查理收費</h1>
@@ -783,6 +1014,7 @@
                         {/* 導覽選單 */}
                         <nav className="flex-1 p-4 space-y-1.5 overflow-y-auto">
                             <button
+                                type="button"
                                 onClick={() => setActiveTab('dashboard')}
                                 className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all ${
                                     activeTab === 'dashboard' 
@@ -790,10 +1022,11 @@
                                         : 'text-slate-400 hover:bg-slate-800/50 hover:text-slate-200'
                                 }`}
                             >
-                                <i data-lucide="layout-dashboard" className="w-4 h-4"></i>
+                                <SvgIcon name="layout-dashboard" />
                                 儀表板總覽
                             </button>
                             <button
+                                type="button"
                                 onClick={() => { setActiveTab('students'); setSelectedClass(classes[0] || ''); }}
                                 className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all ${
                                     activeTab === 'students' 
@@ -801,10 +1034,11 @@
                                         : 'text-slate-400 hover:bg-slate-800/50 hover:text-slate-200'
                                 }`}
                             >
-                                <i data-lucide="users" className="w-4 h-4"></i>
+                                <SvgIcon name="users" />
                                 學生名單管理
                             </button>
                             <button
+                                type="button"
                                 onClick={() => setActiveTab('fees')}
                                 className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all ${
                                     activeTab === 'fees' 
@@ -812,10 +1046,11 @@
                                         : 'text-slate-400 hover:bg-slate-800/50 hover:text-slate-200'
                                 }`}
                             >
-                                <i data-lucide="receipt" className="w-4 h-4"></i>
+                                <SvgIcon name="receipt" />
                                 費用名目設定
                             </button>
                             <button
+                                type="button"
                                 onClick={() => setActiveTab('matrix')}
                                 className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all ${
                                     activeTab === 'matrix' 
@@ -823,10 +1058,11 @@
                                         : 'text-slate-400 hover:bg-slate-800/50 hover:text-slate-200'
                                 }`}
                             >
-                                <i data-lucide="grid-3x3" className="w-4 h-4"></i>
+                                <SvgIcon name="grid-3x3" />
                                 收費登記矩陣
                             </button>
                             <button
+                                type="button"
                                 onClick={() => setActiveTab('backup')}
                                 className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all ${
                                     activeTab === 'backup' 
@@ -834,7 +1070,7 @@
                                         : 'text-slate-400 hover:bg-slate-800/50 hover:text-slate-200'
                                 }`}
                             >
-                                <i data-lucide="file-spreadsheet" className="w-4 h-4"></i>
+                                <SvgIcon name="file-spreadsheet" />
                                 Excel 備份與匯入
                             </button>
                         </nav>
@@ -844,24 +1080,43 @@
                             <div className="flex items-center justify-between mb-2">
                                 <span className="text-xs font-semibold uppercase text-slate-500 tracking-wider">班級清單</span>
                                 <button 
+                                    type="button"
                                     onClick={() => {
                                         const name = prompt('請輸入新班級名稱（例如：一年三班）：');
                                         if (name) handleAddClass(name);
                                     }}
-                                    className="p-1 rounded bg-slate-800 text-slate-400 hover:text-white hover:bg-slate-700"
+                                    className="p-1 rounded bg-slate-800 text-slate-400 hover:text-white hover:bg-slate-700 animate-pulse"
                                 >
-                                    <i data-lucide="plus" className="w-3.5 h-3.5"></i>
+                                    <SvgIcon name="plus" className="w-3.5 h-3.5" />
                                 </button>
                             </div>
                             <div className="space-y-1 max-h-24 overflow-y-auto no-scrollbar">
                                 {classes.map(c => (
-                                    <div key={c} className="flex items-center justify-between text-xs text-slate-300 py-1 px-2 rounded hover:bg-slate-800/30 group">
-                                        <span>{c}</span>
+                                    <div 
+                                        key={c} 
+                                        onClick={() => {
+                                            setSelectedClass(c);
+                                            setShowClassEditInput(false);
+                                            if(activeTab !== 'students') {
+                                                setActiveTab('students');
+                                            }
+                                        }}
+                                        className={`flex items-center justify-between text-xs py-1 px-2 rounded cursor-pointer group transition-colors ${
+                                            selectedClass === c && activeTab === 'students'
+                                                ? 'bg-brand-800 text-white' 
+                                                : 'text-slate-300 hover:bg-slate-800/30'
+                                        }`}
+                                    >
+                                        <span className="truncate pr-1">{c}</span>
                                         <button 
-                                            onClick={() => handleDeleteClass(c)}
-                                            className="opacity-0 group-hover:opacity-100 text-rose-500 hover:text-rose-400 transition-opacity"
+                                            type="button"
+                                            onClick={(e) => {
+                                                e.stopPropagation(); // 🔴 阻擋事件冒泡，防止切換
+                                                handleDeleteClass(c);
+                                            }}
+                                            className="opacity-0 group-hover:opacity-100 text-rose-500 hover:text-rose-400 transition-opacity p-0.5"
                                         >
-                                            <i data-lucide="trash-2" className="w-3 h-3"></i>
+                                            <SvgIcon name="trash-2" className="w-3.5 h-3.5" />
                                         </button>
                                     </div>
                                 ))}
@@ -886,7 +1141,6 @@
                                 </span>
                             </div>
                             
-                            {/* PWA 提示 */}
                             <div className="text-xs text-slate-500 bg-slate-100 px-3 py-1.5 rounded-lg flex items-center gap-1.5">
                                 <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></div>
                                 線上離線皆能運作
@@ -906,48 +1160,48 @@
                                             <p className="text-brand-100 text-sm">此儀表板已為您彙整目前所有班級的繳費進度。</p>
                                         </div>
                                         <div className="flex gap-2">
-                                            <button onClick={() => setActiveTab('matrix')} className="px-4 py-2 bg-white/10 hover:bg-white/20 rounded-xl text-sm font-semibold transition-colors flex items-center gap-2 border border-white/10">
-                                                <i data-lucide="grid-3x3" className="w-4 h-4"></i> 前往登記矩陣
+                                            <button type="button" onClick={() => setActiveTab('matrix')} className="px-4 py-2 bg-white/10 hover:bg-white/20 rounded-xl text-sm font-semibold transition-colors flex items-center gap-2 border border-white/10">
+                                                <SvgIcon name="grid-3x3" /> 前往登記矩陣
                                             </button>
                                         </div>
                                     </div>
 
                                     {/* 四格統計卡片 */}
-                                    <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                                        <div className="bg-white p-5 rounded-2xl border border-slate-200/80 shadow-sm flex items-center gap-4">
-                                            <div className="p-3 bg-brand-50 text-brand-600 rounded-xl">
-                                                <i data-lucide="users" className="w-6 h-6"></i>
+                                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                                        <div className="bg-white p-5 rounded-2xl border border-slate-200/80 shadow-sm flex flex-row items-center gap-4 min-w-0">
+                                            <div className="p-3 bg-brand-50 text-brand-600 rounded-xl shrink-0">
+                                                <SvgIcon name="users" className="w-6 h-6" />
                                             </div>
-                                            <div>
-                                                <p className="text-xs text-slate-500 font-medium">學生總人數</p>
-                                                <p className="text-2xl font-bold text-slate-800">{students.length} 人</p>
-                                            </div>
-                                        </div>
-                                        <div className="bg-white p-5 rounded-2xl border border-slate-200/80 shadow-sm flex items-center gap-4">
-                                            <div className="p-3 bg-indigo-50 text-indigo-600 rounded-xl">
-                                                <i data-lucide="banknote" className="w-6 h-6"></i>
-                                            </div>
-                                            <div>
-                                                <p className="text-xs text-slate-500 font-medium">總應收金額</p>
-                                                <p className="text-2xl font-bold text-slate-800">${stats.totalExpected.toLocaleString()}</p>
+                                            <div className="min-w-0">
+                                                <p className="text-xs text-slate-500 font-semibold tracking-wider uppercase whitespace-nowrap">學生總人數</p>
+                                                <p className="text-2xl font-bold text-slate-800 truncate">{students.length} 人</p>
                                             </div>
                                         </div>
-                                        <div className="bg-white p-5 rounded-2xl border border-slate-200/80 shadow-sm flex items-center gap-4">
-                                            <div className="p-3 bg-emerald-50 text-emerald-600 rounded-xl">
-                                                <i data-lucide="check-circle" className="w-6 h-6"></i>
+                                        <div className="bg-white p-5 rounded-2xl border border-slate-200/80 shadow-sm flex flex-row items-center gap-4 min-w-0">
+                                            <div className="p-3 bg-indigo-50 text-indigo-600 rounded-xl shrink-0">
+                                                <SvgIcon name="banknote" className="w-6 h-6" />
                                             </div>
-                                            <div>
-                                                <p className="text-xs text-slate-500 font-medium">已收總額</p>
-                                                <p className="text-2xl font-bold text-emerald-600">${stats.totalReceived.toLocaleString()}</p>
+                                            <div className="min-w-0">
+                                                <p className="text-xs text-slate-500 font-semibold tracking-wider uppercase whitespace-nowrap">總應收金額</p>
+                                                <p className="text-2xl font-bold text-slate-800 truncate">${stats.totalExpected.toLocaleString()}</p>
                                             </div>
                                         </div>
-                                        <div className="bg-white p-5 rounded-2xl border border-slate-200/80 shadow-sm flex items-center gap-4">
-                                            <div className="p-3 bg-rose-50 text-rose-600 rounded-xl">
-                                                <i data-lucide="clock" className="w-6 h-6"></i>
+                                        <div className="bg-white p-5 rounded-2xl border border-slate-200/80 shadow-sm flex flex-row items-center gap-4 min-w-0">
+                                            <div className="p-3 bg-emerald-50 text-emerald-600 rounded-xl shrink-0">
+                                                <SvgIcon name="check-circle" className="w-6 h-6" />
                                             </div>
-                                            <div>
-                                                <p className="text-xs text-slate-500 font-medium">未收餘額</p>
-                                                <p className="text-2xl font-bold text-rose-600">${stats.totalUnpaid.toLocaleString()}</p>
+                                            <div className="min-w-0">
+                                                <p className="text-xs text-slate-500 font-semibold tracking-wider uppercase whitespace-nowrap">已收總額</p>
+                                                <p className="text-2xl font-bold text-emerald-600 truncate">${stats.totalReceived.toLocaleString()}</p>
+                                            </div>
+                                        </div>
+                                        <div className="bg-white p-5 rounded-2xl border border-slate-200/80 shadow-sm flex flex-row items-center gap-4 min-w-0">
+                                            <div className="p-3 bg-rose-50 text-rose-600 rounded-xl shrink-0">
+                                                <SvgIcon name="clock" className="w-6 h-6" />
+                                            </div>
+                                            <div className="min-w-0">
+                                                <p className="text-xs text-slate-500 font-semibold tracking-wider uppercase whitespace-nowrap">未收餘額</p>
+                                                <p className="text-2xl font-bold text-rose-600 truncate">${stats.totalUnpaid.toLocaleString()}</p>
                                             </div>
                                         </div>
                                     </div>
@@ -980,7 +1234,7 @@
                                         </div>
                                     </div>
 
-                                    {/* 單項費用進度列表 */}
+                                    {/* 各收費項目進度 */}
                                     <div className="bg-white p-6 rounded-2xl border border-slate-200/80 shadow-sm">
                                         <h3 className="font-bold text-lg text-slate-800 mb-4">各收費項目進度</h3>
                                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -1021,14 +1275,17 @@
                             {/* 2. 學生名單管理 */}
                             {activeTab === 'students' && (
                                 <div className="space-y-6 max-w-5xl">
-                                    {/* 操作面板 */}
+                                    {/* 頂部班級切換區與批次處理按鈕 */}
                                     <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-                                        {/* 班級篩選頁籤 */}
                                         <div className="flex items-center gap-2 overflow-x-auto pb-1 no-scrollbar">
                                             {classes.map(c => (
                                                 <button
+                                                    type="button"
                                                     key={c}
-                                                    onClick={() => setSelectedClass(c)}
+                                                    onClick={() => {
+                                                        setSelectedClass(c);
+                                                        setShowClassEditInput(false);
+                                                    }}
                                                     className={`px-4 py-2 rounded-xl text-sm font-semibold transition-all whitespace-nowrap ${
                                                         selectedClass === c 
                                                             ? 'bg-brand-600 text-white shadow-md' 
@@ -1039,77 +1296,187 @@
                                                 </button>
                                             ))}
                                             {classes.length === 0 && (
-                                                <span className="text-sm text-slate-400">請先在左下角建立班級</span>
+                                                <span className="text-sm text-slate-400">請先在右側「班級管理」建立班級</span>
                                             )}
                                         </div>
 
                                         <div className="flex items-center gap-2 self-end md:self-auto">
                                             <button 
+                                                type="button"
                                                 onClick={() => { setImportClass(selectedClass); setShowImportModal(true); }}
                                                 className="px-4 py-2 bg-brand-50 hover:bg-brand-100 text-brand-600 rounded-xl text-sm font-semibold transition-colors flex items-center gap-1.5"
                                             >
-                                                <i data-lucide="file-input" className="w-4 h-4"></i>
+                                                <SvgIcon name="file-input" />
                                                 快速批量匯入
                                             </button>
                                             <button 
+                                                type="button"
                                                 onClick={() => { setBatchClassFilter(selectedClass); handleOpenBatchEdit(); }}
                                                 className="px-4 py-2 bg-indigo-50 hover:bg-indigo-100 text-indigo-600 rounded-xl text-sm font-semibold transition-colors flex items-center gap-1.5"
                                             >
-                                                <i data-lucide="edit-3" className="w-4 h-4"></i>
+                                                <SvgIcon name="edit-3" />
                                                 大量批次編輯
                                             </button>
                                         </div>
                                     </div>
 
+                                    {/* 主架構網格：手動新增、班級管理、名冊列表 */}
                                     <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                                        {/* 手動新增學生表單 */}
-                                        <div className="bg-white p-6 rounded-2xl border border-slate-200/80 shadow-sm h-fit">
-                                            <h3 className="font-bold text-lg text-slate-800 mb-4">手動新增學生</h3>
-                                            <form onSubmit={handleAddStudent} className="space-y-4">
-                                                <div>
-                                                    <label className="block text-xs font-semibold text-slate-500 mb-1.5">班級</label>
-                                                    <select 
-                                                        value={newStudent.class} 
-                                                        onChange={(e) => setNewStudent({...newStudent, class: e.target.value})}
-                                                        className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-brand-500"
-                                                    >
-                                                        <option value="">選擇班級...</option>
-                                                        {classes.map(c => <option key={c} value={c}>{c}</option>)}
-                                                    </select>
-                                                </div>
-                                                <div className="grid grid-cols-2 gap-3">
+                                        
+                                        {/* 左側表單欄 */}
+                                        <div className="space-y-6">
+                                            {/* 手動新增學生表單 */}
+                                            <div className="bg-white p-6 rounded-2xl border border-slate-200/80 shadow-sm">
+                                                <h3 className="font-bold text-lg text-slate-800 mb-4">手動新增學生</h3>
+                                                <form onSubmit={handleAddStudent} className="space-y-4">
                                                     <div>
-                                                        <label className="block text-xs font-semibold text-slate-500 mb-1.5">座號</label>
-                                                        <input 
-                                                            type="text" 
-                                                            placeholder="01" 
-                                                            value={newStudent.seatNo} 
-                                                            onChange={(e) => setNewStudent({...newStudent, seatNo: e.target.value})}
+                                                        <label className="block text-xs font-semibold text-slate-500 mb-1.5">選擇班級</label>
+                                                        <select 
+                                                            value={newStudent.class} 
+                                                            onChange={(e) => setNewStudent({...newStudent, class: e.target.value})}
                                                             className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-brand-500"
-                                                        />
+                                                        >
+                                                            <option value="">選擇班級...</option>
+                                                            {classes.map(c => <option key={c} value={c}>{c}</option>)}
+                                                        </select>
                                                     </div>
+                                                    <div className="grid grid-cols-2 gap-3">
+                                                        <div>
+                                                            <label className="block text-xs font-semibold text-slate-500 mb-1.5">座號</label>
+                                                            <input 
+                                                                type="text" 
+                                                                placeholder="01" 
+                                                                value={newStudent.seatNo} 
+                                                                onChange={(e) => setNewStudent({...newStudent, seatNo: e.target.value})}
+                                                                className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-brand-500"
+                                                            />
+                                                        </div>
+                                                        <div>
+                                                            <label className="block text-xs font-semibold text-slate-500 mb-1.5">姓名</label>
+                                                            <input 
+                                                                type="text" 
+                                                                placeholder="陳小明" 
+                                                                value={newStudent.name} 
+                                                                onChange={(e) => setNewStudent({...newStudent, name: e.target.value})}
+                                                                className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-brand-500"
+                                                            />
+                                                        </div>
+                                                    </div>
+                                                    <button type="submit" className="w-full py-2.5 bg-brand-600 hover:bg-brand-700 text-white rounded-xl text-sm font-semibold shadow-md transition-colors">
+                                                        加入班級名單
+                                                    </button>
+                                                </form>
+                                            </div>
+
+                                            {/* 班級編輯與管理面板 */}
+                                            <div className="bg-white p-6 rounded-2xl border border-slate-200/80 shadow-sm space-y-4">
+                                                <h3 className="font-bold text-lg text-slate-800">班級編輯與管理</h3>
+                                                <p className="text-xs text-slate-400">建立、修改班級名稱或刪除班級。變更班級名稱將自動同步該班所有學生。</p>
+                                                
+                                                <div className="space-y-3">
                                                     <div>
-                                                        <label className="block text-xs font-semibold text-slate-500 mb-1.5">姓名</label>
-                                                        <input 
-                                                            type="text" 
-                                                            placeholder="陳小明" 
-                                                            value={newStudent.name} 
-                                                            onChange={(e) => setNewStudent({...newStudent, name: e.target.value})}
-                                                            className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-brand-500"
-                                                        />
+                                                        <label className="block text-xs font-semibold text-slate-500 mb-1.5">快速建立新班級</label>
+                                                        <div className="flex gap-2">
+                                                            <input 
+                                                                type="text" 
+                                                                id="quick-add-class-input"
+                                                                placeholder="例：二年三班" 
+                                                                className="flex-1 bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-brand-500"
+                                                                onKeyDown={(e) => {
+                                                                    if (e.key === 'Enter') {
+                                                                        handleAddClass(e.target.value);
+                                                                        e.target.value = '';
+                                                                    }
+                                                                }}
+                                                            />
+                                                            <button 
+                                                                type="button"
+                                                                onClick={() => {
+                                                                    const input = document.getElementById('quick-add-class-input');
+                                                                    if (input && input.value) {
+                                                                        handleAddClass(input.value);
+                                                                        input.value = '';
+                                                                    }
+                                                                }}
+                                                                className="px-3 py-2 bg-brand-600 text-white hover:bg-brand-700 rounded-xl text-xs font-semibold shrink-0"
+                                                            >
+                                                                建立
+                                                            </button>
+                                                        </div>
                                                     </div>
+
+                                                    {selectedClass && (
+                                                        <div className="pt-3 border-t border-slate-100 space-y-2">
+                                                            <label className="block text-xs font-semibold text-slate-500">
+                                                                管理當前選定班級：<span className="text-brand-600 font-bold">{selectedClass}</span>
+                                                            </label>
+
+                                                            {showClassEditInput ? (
+                                                                <div className="flex gap-2">
+                                                                    <input 
+                                                                        type="text" 
+                                                                        defaultValue={selectedClass}
+                                                                        id="rename-class-input"
+                                                                        className="flex-1 bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-brand-500 font-semibold"
+                                                                        autoFocus
+                                                                        onKeyDown={(e) => {
+                                                                            if (e.key === 'Enter') {
+                                                                                handleRenameClass(selectedClass, e.target.value);
+                                                                            }
+                                                                        }}
+                                                                    />
+                                                                    <button 
+                                                                        type="button"
+                                                                        onClick={() => {
+                                                                            const val = document.getElementById('rename-class-input').value;
+                                                                            handleRenameClass(selectedClass, val);
+                                                                        }}
+                                                                        className="px-3 py-2 bg-emerald-600 text-white rounded-xl text-xs font-semibold shrink-0"
+                                                                    >
+                                                                        確認
+                                                                    </button>
+                                                                    <button 
+                                                                        type="button"
+                                                                        onClick={() => setShowClassEditInput(false)}
+                                                                        className="px-3 py-2 bg-slate-200 text-slate-600 rounded-xl text-xs font-semibold shrink-0"
+                                                                    >
+                                                                        取消
+                                                                    </button>
+                                                                </div>
+                                                            ) : (
+                                                                <div className="grid grid-cols-2 gap-2">
+                                                                    <button 
+                                                                        type="button"
+                                                                        onClick={() => {
+                                                                            setEditingClassName(selectedClass);
+                                                                            setShowClassEditInput(true);
+                                                                        }}
+                                                                        className="px-3 py-2 border border-slate-200 hover:bg-slate-50 rounded-xl text-xs font-semibold text-slate-700 flex items-center justify-center gap-1"
+                                                                    >
+                                                                        <SvgIcon name="edit-2" className="w-3.5 h-3.5" />
+                                                                        編輯名稱
+                                                                    </button>
+                                                                    <button 
+                                                                        type="button"
+                                                                        onClick={() => handleDeleteClass(selectedClass)}
+                                                                        className="px-3 py-2 bg-rose-50 hover:bg-rose-100 rounded-xl text-xs font-semibold text-rose-600 flex items-center justify-center gap-1"
+                                                                    >
+                                                                        <SvgIcon name="trash-2" className="w-3.5 h-3.5" />
+                                                                        刪除此班
+                                                                    </button>
+                                                                </div>
+                                                            )}
+                                                        </div>
+                                                    )}
                                                 </div>
-                                                <button type="submit" className="w-full py-2.5 bg-brand-600 hover:bg-brand-700 text-white rounded-xl text-sm font-semibold shadow-md transition-colors">
-                                                    加入班級名單
-                                                </button>
-                                            </form>
+                                            </div>
                                         </div>
 
                                         {/* 學生名單列表 */}
                                         <div className="lg:col-span-2 bg-white rounded-2xl border border-slate-200/80 shadow-sm overflow-hidden">
                                             <div className="px-6 py-4 border-b border-slate-100 flex justify-between items-center bg-slate-50/50">
                                                 <span className="font-bold text-slate-800">
-                                                    {selectedClass ? `「${selectedClass}」學生名冊` : '請先選定班級'}
+                                                    {selectedClass ? `「${selectedClass}」學生名冊` : '請先選定或建立班級'}
                                                 </span>
                                                 <span className="text-xs text-slate-500">共 {filteredStudents.length} 位學生</span>
                                             </div>
@@ -1132,7 +1499,7 @@
                                                                             type="text" 
                                                                             defaultValue={student.seatNo}
                                                                             onBlur={(e) => handleUpdateStudent(student.id, { seatNo: e.target.value })}
-                                                                            className="w-12 bg-slate-50 border border-slate-200 rounded-md px-1 py-0.5"
+                                                                            className="w-12 bg-slate-50 border border-slate-200 rounded-md px-1 py-0.5 animate-pulse"
                                                                             autoFocus
                                                                         />
                                                                     ) : student.seatNo}
@@ -1143,7 +1510,7 @@
                                                                             type="text" 
                                                                             defaultValue={student.name}
                                                                             onBlur={(e) => handleUpdateStudent(student.id, { name: e.target.value })}
-                                                                            className="w-32 bg-slate-50 border border-slate-200 rounded-md px-1.5 py-0.5"
+                                                                            className="w-32 bg-slate-50 border border-slate-200 rounded-md px-1.5 py-0.5 animate-pulse"
                                                                             autoFocus
                                                                         />
                                                                     ) : student.name}
@@ -1151,16 +1518,18 @@
                                                                 <td className="px-6 py-3.5 text-right">
                                                                     <div className="flex items-center justify-end gap-1.5">
                                                                         <button 
+                                                                            type="button"
                                                                             onClick={() => setEditingStudent(editingStudent === student.id ? null : student.id)}
                                                                             className="p-1 rounded text-slate-400 hover:text-brand-600 hover:bg-brand-50"
                                                                         >
-                                                                            <i data-lucide="edit" className="w-4 h-4"></i>
+                                                                            <SvgIcon name="edit" />
                                                                         </button>
                                                                         <button 
+                                                                            type="button"
                                                                             onClick={() => handleDeleteStudent(student.id, student.name)}
                                                                             className="p-1 rounded text-slate-400 hover:text-rose-600 hover:bg-rose-50"
                                                                         >
-                                                                            <i data-lucide="trash-2" className="w-4 h-4"></i>
+                                                                            <SvgIcon name="trash-2" />
                                                                         </button>
                                                                     </div>
                                                                 </td>
@@ -1185,7 +1554,6 @@
                             {activeTab === 'fees' && (
                                 <div className="space-y-6 max-w-5xl">
                                     <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                                        {/* 新增費用項目 */}
                                         <div className="bg-white p-6 rounded-2xl border border-slate-200/80 shadow-sm h-fit">
                                             <h3 className="font-bold text-lg text-slate-800 mb-4">新增收費名目</h3>
                                             <form onSubmit={handleAddFee} className="space-y-4">
@@ -1215,7 +1583,6 @@
                                             </form>
                                         </div>
 
-                                        {/* 費用項目清單 */}
                                         <div className="lg:col-span-2 bg-white rounded-2xl border border-slate-200/80 shadow-sm overflow-hidden">
                                             <div className="px-6 py-4 border-b border-slate-100 flex justify-between items-center bg-slate-50/50">
                                                 <span className="font-bold text-slate-800">所有費用名目</span>
@@ -1240,7 +1607,7 @@
                                                                             type="text" 
                                                                             defaultValue={fee.name}
                                                                             onBlur={(e) => handleUpdateFee(fee.id, { ...fee, name: e.target.value })}
-                                                                            className="w-full bg-slate-50 border border-slate-200 rounded-md px-1.5 py-0.5"
+                                                                            className="w-full bg-slate-50 border border-slate-200 rounded-md px-1.5 py-0.5 animate-pulse"
                                                                             autoFocus
                                                                         />
                                                                     ) : fee.name}
@@ -1251,7 +1618,7 @@
                                                                             type="number" 
                                                                             defaultValue={fee.amount}
                                                                             onBlur={(e) => handleUpdateFee(fee.id, { ...fee, amount: e.target.value })}
-                                                                            className="w-24 bg-slate-50 border border-slate-200 rounded-md px-1.5 py-0.5"
+                                                                            className="w-24 bg-slate-50 border border-slate-200 rounded-md px-1.5 py-0.5 animate-pulse"
                                                                             autoFocus
                                                                         />
                                                                     ) : `$${fee.amount.toLocaleString()}`}
@@ -1259,16 +1626,18 @@
                                                                 <td className="px-6 py-3.5 text-right">
                                                                     <div className="flex items-center justify-end gap-1.5">
                                                                         <button 
+                                                                            type="button"
                                                                             onClick={() => setEditingFee(editingFee === fee.id ? null : fee.id)}
                                                                             className="p-1 rounded text-slate-400 hover:text-brand-600 hover:bg-brand-50"
                                                                         >
-                                                                            <i data-lucide="edit" className="w-4 h-4"></i>
+                                                                            <SvgIcon name="edit" />
                                                                         </button>
                                                                         <button 
+                                                                            type="button"
                                                                             onClick={() => handleDeleteFee(fee.id, fee.name)}
                                                                             className="p-1 rounded text-slate-400 hover:text-rose-600 hover:bg-rose-50"
                                                                         >
-                                                                            <i data-lucide="trash-2" className="w-4 h-4"></i>
+                                                                            <SvgIcon name="trash-2" />
                                                                         </button>
                                                                     </div>
                                                                 </td>
@@ -1292,7 +1661,6 @@
                             {/* 4. 收費登記矩陣 */}
                             {activeTab === 'matrix' && (
                                 <div className="space-y-6">
-                                    {/* 篩選工具列 */}
                                     <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white p-4 rounded-2xl border border-slate-200/80 shadow-sm">
                                         <div className="flex items-center gap-3">
                                             <span className="text-sm font-semibold text-slate-500">篩選班級：</span>
@@ -1310,7 +1678,6 @@
                                         </div>
                                     </div>
 
-                                    {/* 大矩陣主表格 */}
                                     <div className="bg-white rounded-2xl border border-slate-200/80 shadow-sm overflow-hidden">
                                         <div className="overflow-x-auto">
                                             <table className="w-full text-left border-collapse table-fixed">
@@ -1320,7 +1687,6 @@
                                                         <th className="px-4 py-4 w-16 sticky left-28 bg-slate-50 z-10 border-r border-slate-100">座號</th>
                                                         <th className="px-4 py-4 w-28 sticky left-44 bg-slate-50 z-10 border-r border-slate-200 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)]">姓名</th>
                                                         
-                                                        {/* 動態渲染費用名目欄位 */}
                                                         {fees.map(f => (
                                                             <th key={f.id} className="px-4 py-4 min-w-[150px] border-r border-slate-100 text-center">
                                                                 <p className="font-semibold text-slate-800 text-sm truncate">{f.name}</p>
@@ -1342,7 +1708,6 @@
                                                                 {student.name}
                                                             </td>
 
-                                                            {/* 動態渲染各費用繳納格子 */}
                                                             {fees.map(fee => {
                                                                 const p = getStudentPayment(student.id, fee.id);
                                                                 let statusColor = "bg-rose-50 text-rose-600 border-rose-100";
@@ -1355,11 +1720,17 @@
                                                                         className="p-2 border-r border-slate-100 text-center transition-colors cursor-pointer group/cell hover:bg-slate-50"
                                                                         onClick={() => setPaymentModal({ student, fee })}
                                                                     >
-                                                                        <div className={`mx-auto rounded-lg px-2.5 py-1.5 border text-xs font-semibold ${statusColor} transition-all transform group-hover/cell:scale-[1.02] flex flex-col items-center justify-center min-h-[48px]`}>
+                                                                        <div className={`mx-auto rounded-lg px-2.5 py-1.5 border text-xs font-semibold ${statusColor} transition-all transform group-hover/cell:scale-[1.02] flex flex-col items-center justify-center min-h-[52px]`}>
                                                                             <span>{p.status}</span>
                                                                             <span className="text-[10px] opacity-80 mt-0.5">
                                                                                 {p.status === "部分繳納" ? `$${p.paidAmount}/$${p.customAmount}` : `$${p.customAmount}`}
                                                                             </span>
+                                                                            {/* 🟢 已繳清狀態：在格子下方直接註記當下日期時間 */}
+                                                                            {p.status === "已繳清" && p.paidAt && (
+                                                                                <span className="text-[9px] font-normal text-emerald-700/80 mt-1 whitespace-nowrap bg-emerald-100/40 px-1 rounded">
+                                                                                    {p.paidAt}
+                                                                                </span>
+                                                                            )}
                                                                         </div>
                                                                     </td>
                                                                 );
@@ -1367,7 +1738,6 @@
                                                         </tr>
                                                     ))}
 
-                                                    {/* 收費統計橫列 */}
                                                     <tr className="bg-slate-50 font-bold border-t-2 border-slate-200">
                                                         <td colSpan="3" className="px-4 py-4 text-right sticky left-0 bg-slate-50 z-10 border-r border-slate-200 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)] text-slate-700">
                                                             目前已收/應收 統計
@@ -1401,7 +1771,7 @@
                                     <div className="bg-white p-6 rounded-2xl border border-slate-200/80 shadow-sm space-y-6">
                                         <div className="flex items-center gap-3">
                                             <div className="bg-emerald-50 p-2 text-emerald-600 rounded-lg">
-                                                <i data-lucide="file-spreadsheet" className="w-6 h-6"></i>
+                                                <SvgIcon name="file-spreadsheet" className="w-6 h-6" />
                                             </div>
                                             <div>
                                                 <h3 className="font-bold text-lg text-slate-800">試算表備份中心</h3>
@@ -1411,24 +1781,23 @@
 
                                         <hr className="border-slate-100" />
 
-                                        {/* 匯出備份區 */}
                                         <div className="space-y-3">
                                             <h4 className="font-semibold text-slate-700">資料安全備份 (匯出 Excel)</h4>
                                             <p className="text-xs text-slate-400 leading-relaxed">
                                                 點選下方按鈕，系統會將名單大表包裝，產出含有多張工作表 (學生名冊、收費項目、繳費矩陣) 的 Excel 試算表，供您留底及離線編輯。
                                             </p>
                                             <button 
+                                                type="button"
                                                 onClick={exportToExcel}
                                                 className="w-full md:w-auto px-6 py-3 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-sm font-semibold transition-colors flex items-center justify-center gap-2 shadow-md"
                                             >
-                                                <i data-lucide="download" className="w-4 h-4"></i>
+                                                <SvgIcon name="download" />
                                                 下載 Excel 備份大表 (.xlsx)
                                             </button>
                                         </div>
 
                                         <hr className="border-slate-100" />
 
-                                        {/* 匯入備份區 */}
                                         <div className="space-y-3">
                                             <h4 className="font-semibold text-slate-700">復原或讀取備份資料 (匯入 Excel)</h4>
                                             <p className="text-xs text-rose-500 leading-relaxed">
@@ -1437,7 +1806,7 @@
                                             <div className="flex items-center justify-center w-full">
                                                 <label className="flex flex-col items-center justify-center w-full h-32 border-2 border-slate-200 border-dashed rounded-2xl cursor-pointer bg-slate-50 hover:bg-slate-100/50 transition-colors">
                                                     <div className="flex flex-col items-center justify-center pt-5 pb-6">
-                                                        <i data-lucide="upload-cloud" className="w-8 h-8 text-slate-400 mb-2"></i>
+                                                        <SvgIcon name="upload-cloud" className="w-8 h-8 text-slate-400 mb-2" />
                                                         <p className="mb-1 text-sm text-slate-500 font-semibold">點此處選擇並上傳備份 Excel 檔案</p>
                                                         <p className="text-xs text-slate-400">僅支援由本系統所匯出的 .xlsx 試算表格式</p>
                                                     </div>
@@ -1465,8 +1834,8 @@
                             <div className="bg-white rounded-2xl max-w-lg w-full p-6 shadow-2xl border border-slate-100 flex flex-col gap-4">
                                 <div className="flex justify-between items-center">
                                     <h3 className="font-bold text-lg text-slate-800">快速批量匯入學生</h3>
-                                    <button onClick={() => setShowImportModal(false)} className="text-slate-400 hover:text-slate-600">
-                                        <i data-lucide="x" className="w-5 h-5"></i>
+                                    <button type="button" onClick={() => setShowImportModal(false)} className="text-slate-400 hover:text-slate-600">
+                                        <SvgIcon name="x" className="w-5 h-5" />
                                     </button>
                                 </div>
 
@@ -1494,12 +1863,14 @@
 
                                 <div className="flex justify-end gap-2 mt-2">
                                     <button 
+                                        type="button"
                                         onClick={() => setShowImportModal(false)} 
                                         className="px-4 py-2 text-slate-500 hover:bg-slate-50 rounded-xl text-sm font-semibold"
                                     >
                                         取消
                                     </button>
                                     <button 
+                                        type="button"
                                         onClick={handleBatchImport} 
                                         className="px-4 py-2 bg-brand-600 hover:bg-brand-700 text-white rounded-xl text-sm font-semibold"
                                     >
@@ -1516,13 +1887,13 @@
                             <div className="bg-white rounded-2xl max-w-2xl w-full p-6 shadow-2xl border border-slate-100 flex flex-col gap-4">
                                 <div className="flex justify-between items-center">
                                     <h3 className="font-bold text-lg text-slate-800">批次修改「{batchClassFilter}」全班名單</h3>
-                                    <button onClick={() => setShowBatchEditModal(false)} className="text-slate-400 hover:text-slate-600">
-                                        <i data-lucide="x" className="w-5 h-5"></i>
+                                    <button type="button" onClick={() => setShowBatchEditModal(false)} className="text-slate-400 hover:text-slate-600">
+                                        <SvgIcon name="x" className="w-5 h-5" />
                                     </button>
                                 </div>
 
                                 <div className="bg-amber-50 text-amber-800 border border-amber-100 p-3 rounded-xl text-xs flex gap-2">
-                                    <i data-lucide="alert-triangle" className="w-4 h-4 shrink-0 mt-0.5"></i>
+                                    <SvgIcon name="alert-triangle" className="w-4 h-4 shrink-0 mt-0.5" />
                                     <span>
                                         這將<b>完全覆蓋並取代</b>當前該班級的所有學生。您可以直接在下方框內編輯，修改座號或姓名，或將別處的清單貼上於此。
                                     </span>
@@ -1540,12 +1911,14 @@
 
                                 <div className="flex justify-end gap-2 mt-2">
                                     <button 
+                                        type="button"
                                         onClick={() => setShowBatchEditModal(false)} 
                                         className="px-4 py-2 text-slate-500 hover:bg-slate-50 rounded-xl text-sm font-semibold"
                                     >
                                         放棄變更
                                     </button>
                                     <button 
+                                        type="button"
                                         onClick={handleSaveBatchEdit} 
                                         className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-sm font-semibold"
                                     >
@@ -1572,6 +1945,15 @@
                         );
                     })()}
 
+                    {/* 安全自訂確認視窗 (完全擺脫原生 confirm 被封鎖的問題) */}
+                    <CustomConfirmModal 
+                        isOpen={!!confirmModal}
+                        title={confirmModal?.title || ""}
+                        message={confirmModal?.message || ""}
+                        onConfirm={confirmModal?.onConfirm || (() => {})}
+                        onCancel={() => setConfirmModal(null)}
+                    />
+
                     {/* Toast 訊息提醒 */}
                     {toast && (
                         <div className="fixed bottom-6 right-6 z-50 flex items-center gap-2 bg-slate-900 text-white py-3 px-5 rounded-2xl shadow-2xl border border-slate-800 animate-slide-in">
@@ -1583,17 +1965,9 @@
             );
         }
 
-        // 啟動 React
         const container = document.getElementById('root');
         const root = ReactDOM.createRoot(container);
         root.render(<App />);
-
-        // 動態初始化 Lucide Icons
-        setInterval(() => {
-            if (window.lucide) {
-                window.lucide.createIcons();
-            }
-        }, 1000);
     </script>
 </body>
 </html>
