@@ -101,7 +101,7 @@
             </div>
             <div class="flex items-center gap-4 text-xs font-medium text-slate-500">
                 <span id="system-time"></span>
-                <span class="bg-indigo-50 text-indigo-600 px-2.5 py-1 rounded-full font-semibold" id="count-summary">15 位學生 / 3 項費用</span>
+                <span class="bg-indigo-50 text-indigo-600 px-2.5 py-1 rounded-full font-semibold" id="count-summary">0 位學生 / 0 項費用</span>
             </div>
         </header>
 
@@ -547,77 +547,11 @@
         // UI active tab
         let activeTab = 'dashboard';
 
-        // Expanded Mock Starter Data (15 Students across Class 3-2 and 3-3 with full simulated payment database)
+        // Pure Clean Starter Data (Defaulting to Empty State so Charlie Teacher can start fresh with zero errors!)
         const starterData = {
-            students: [
-                { id: "s1", class: "三年二班", seatNo: "01", name: "張育誠" },
-                { id: "s2", class: "三年二班", seatNo: "02", name: "李佳穎" },
-                { id: "s3", class: "三年二班", seatNo: "03", name: "王品捷" },
-                { id: "s4", class: "三年二班", seatNo: "04", name: "陳冠宇" },
-                { id: "s5", class: "三年二班", seatNo: "05", name: "林芷晴" },
-                { id: "s6", class: "三年二班", seatNo: "06", name: "洪啟睿" },
-                { id: "s7", class: "三年二班", seatNo: "07", name: "曾梓軒" },
-                { id: "s8", class: "三年二班", seatNo: "08", name: "許晴雅" },
-                { id: "s9", class: "三年二班", seatNo: "09", name: "葉冠麟" },
-                { id: "s10", class: "三年二班", seatNo: "10", name: "廖昱廷" },
-                { id: "s11", class: "三年三班", seatNo: "01", name: "黃宣智" },
-                { id: "s12", class: "三年三班", seatNo: "02", name: "徐筱雯" },
-                { id: "s13", class: "三年三班", seatNo: "03", name: "趙家宏" },
-                { id: "s14", class: "三年三班", seatNo: "04", name: "賴品妤" },
-                { id: "s15", class: "三年三班", seatNo: "05", name: "鍾承恩" }
-            ],
-            feeItems: [
-                { id: "f1", name: "班費", amount: 500 },
-                { id: "f2", name: "戶外教學", amount: 1500 },
-                { id: "f3", name: "模擬考卷費", amount: 320 }
-            ],
-            payments: {
-                "s1_f1": { status: "已繳清", paidAmount: 500, targetAmount: 500, paidAt: "2026/05/28 10:30" },
-                "s1_f2": { status: "已繳清", paidAmount: 1500, targetAmount: 1500, paidAt: "2026/05/28 10:32" },
-                "s1_f3": { status: "已繳清", paidAmount: 320, targetAmount: 320, paidAt: "2026/05/29 09:15" },
-                "s2_f1": { status: "已繳清", paidAmount: 500, targetAmount: 500, paidAt: "2026/05/29 11:20" },
-                "s2_f2": { status: "部分繳納", paidAmount: 800, targetAmount: 1000 },
-                "s2_f3": { status: "未繳", paidAmount: 0, targetAmount: 320 },
-                "s3_f1": { status: "已繳清", paidAmount: 500, targetAmount: 500, paidAt: "2026/05/27 15:45" },
-                "s3_f2": { status: "未繳", paidAmount: 0, targetAmount: 1500 },
-                "s3_f3": { status: "未繳", paidAmount: 0, targetAmount: 320 },
-                "s4_f1": { status: "未繳", paidAmount: 0, targetAmount: 500 },
-                "s4_f2": { status: "未繳", paidAmount: 0, targetAmount: 1500 },
-                "s4_f3": { status: "未繳", paidAmount: 0, targetAmount: 320 },
-                "s5_f1": { status: "已繳清", paidAmount: 500, targetAmount: 500, paidAt: "2026/05/26 14:10" },
-                "s5_f2": { status: "已繳清", paidAmount: 1600, targetAmount: 1600, paidAt: "2026/05/26 14:15" },
-                "s5_f3": { status: "部分繳納", paidAmount: 150, targetAmount: 320 },
-                "s6_f1": { status: "已繳清", paidAmount: 500, targetAmount: 500, paidAt: "2026/05/28 16:40" },
-                "s6_f2": { status: "已繳清", paidAmount: 1500, targetAmount: 1500, paidAt: "2026/05/28 16:42" },
-                "s6_f3": { status: "已繳清", paidAmount: 320, targetAmount: 320, paidAt: "2026/05/28 16:45" },
-                "s7_f1": { status: "已繳清", paidAmount: 500, targetAmount: 500, paidAt: "2026/05/29 12:10" },
-                "s7_f2": { status: "部分繳納", paidAmount: 1000, targetAmount: 1500 },
-                "s7_f3": { status: "已繳清", paidAmount: 320, targetAmount: 320, paidAt: "2026/05/29 12:12" },
-                "s8_f1": { status: "未繳", paidAmount: 0, targetAmount: 500 },
-                "s8_f2": { status: "已繳清", paidAmount: 1200, targetAmount: 1200, paidAt: "2026/05/29 10:05" }, // Special lower rate
-                "s8_f3": { status: "未繳", paidAmount: 0, targetAmount: 320 },
-                "s9_f1": { status: "已繳清", paidAmount: 500, targetAmount: 500, paidAt: "2026/05/25 09:30" },
-                "s9_f2": { status: "未繳", paidAmount: 0, targetAmount: 1500 },
-                "s9_f3": { status: "部分繳納", paidAmount: 200, targetAmount: 320 },
-                "s10_f1": { status: "已繳清", paidAmount: 500, targetAmount: 500, paidAt: "2026/05/29 13:00" },
-                "s10_f2": { status: "已繳清", paidAmount: 1500, targetAmount: 1500, paidAt: "2026/05/29 13:02" },
-                "s10_f3": { status: "已繳清", paidAmount: 320, targetAmount: 320, paidAt: "2026/05/29 13:05" },
-                "s11_f1": { status: "已繳清", paidAmount: 500, targetAmount: 500, paidAt: "2026/05/29 08:30" },
-                "s11_f2": { status: "未繳", paidAmount: 0, targetAmount: 1500 },
-                "s11_f3": { status: "已繳清", paidAmount: 320, targetAmount: 320, paidAt: "2026/05/29 08:35" },
-                "s12_f1": { status: "已繳清", paidAmount: 500, targetAmount: 500, paidAt: "2026/05/28 14:15" },
-                "s12_f2": { status: "已繳清", paidAmount: 1500, targetAmount: 1500, paidAt: "2026/05/28 14:20" },
-                "s12_f3": { status: "已繳清", paidAmount: 320, targetAmount: 320, paidAt: "2026/05/28 14:22" },
-                "s13_f1": { status: "未繳", paidAmount: 0, targetAmount: 500 },
-                "s13_f2": { status: "部分繳納", paidAmount: 500, targetAmount: 1500 },
-                "s13_f3": { status: "未繳", paidAmount: 0, targetAmount: 320 },
-                "s14_f1": { status: "已繳清", paidAmount: 500, targetAmount: 500, paidAt: "2026/05/29 11:45" },
-                "s14_f2": { status: "已繳清", paidAmount: 1500, targetAmount: 1500, paidAt: "2026/05/29 11:50" },
-                "s14_f3": { status: "未繳", paidAmount: 0, targetAmount: 320 },
-                "s15_f1": { status: "已繳清", paidAmount: 500, targetAmount: 500, paidAt: "2026/05/27 16:10" },
-                "s15_f2": { status: "未繳", paidAmount: 0, targetAmount: 1500 },
-                "s15_f3": { status: "已繳清", paidAmount: 320, targetAmount: 320, paidAt: "2026/05/27 16:12" }
-            }
+            students: [],
+            feeItems: [],
+            payments: {}
         };
 
         // Init System
@@ -656,7 +590,10 @@
             const stringManifest = JSON.stringify(manifestObj);
             const blob = new Blob([stringManifest], { type: 'application/json' });
             const manifestURL = URL.createObjectURL(blob);
-            document.getElementById('manifest-link').setAttribute('href', manifestURL);
+            const manifestLink = document.getElementById('manifest-link');
+            if (manifestLink) {
+                manifestLink.setAttribute('href', manifestURL);
+            }
         }
 
         // Keep local storage persistent
@@ -665,18 +602,38 @@
             if (saved) {
                 try {
                     state = JSON.parse(saved);
+                    // Defensive validation: Clean orphan records of students or fee items that might have been removed
+                    sanitizePaymentsDatabase();
                 } catch(e) {
                     console.error("儲存的資料損壞，重新初始化", e);
                     state = JSON.parse(JSON.stringify(starterData));
                 }
             } else {
-                // First launch, pre-populate starter data
+                // First launch, start completely clean
                 state = JSON.parse(JSON.stringify(starterData));
                 saveToLocalStorage();
             }
         }
 
+        // Clean orphan records to avoid calculation mismatch
+        function sanitizePaymentsDatabase() {
+            if (!state.payments) state.payments = {};
+            if (!state.students) state.students = [];
+            if (!state.feeItems) state.feeItems = [];
+
+            const activeStudentIds = state.students.map(s => s.id);
+            const activeFeeIds = state.feeItems.map(f => f.id);
+
+            Object.keys(state.payments).forEach(key => {
+                const [sId, fId] = key.split('_');
+                if (!activeStudentIds.includes(sId) || !activeFeeIds.includes(fId)) {
+                    delete state.payments[key];
+                }
+            });
+        }
+
         function saveToLocalStorage() {
+            sanitizePaymentsDatabase();
             localStorage.setItem('class_fee_manager_state', JSON.stringify(state));
         }
 
@@ -688,12 +645,16 @@
             const date = String(now.getDate()).padStart(2, '0');
             const hours = String(now.getHours()).padStart(2, '0');
             const minutes = String(now.getMinutes()).padStart(2, '0');
-            document.getElementById('system-time').innerText = `${year}/${month}/${date} ${hours}:${minutes}`;
+            const systemTimeEl = document.getElementById('system-time');
+            if (systemTimeEl) {
+                systemTimeEl.innerText = `${year}/${month}/${date} ${hours}:${minutes}`;
+            }
         }
 
         // Custom Toaster Message box
         function showNotification(text, type = 'success') {
             const container = document.getElementById('toast-container');
+            if (!container) return;
             const toast = document.createElement('div');
             toast.className = `flex items-center gap-3 p-4 rounded-xl shadow-lg border text-sm font-semibold pointer-events-auto transition duration-300 transform translate-y-5 opacity-0`;
             
@@ -726,7 +687,10 @@
         // Global State refresh
         function renderAll() {
             // Update counts in header
-            document.getElementById('count-summary').innerText = `${state.students.length} 位學生 / ${state.feeItems.length} 項費用`;
+            const countSummaryEl = document.getElementById('count-summary');
+            if (countSummaryEl) {
+                countSummaryEl.innerText = `${state.students.length} 位學生 / ${state.feeItems.length} 項費用`;
+            }
             
             // Populate Dropdowns with available classes
             updateClassDropdowns();
@@ -846,7 +810,9 @@
             // Show and set active
             document.getElementById(`tab-${tabId}`).classList.remove('hidden');
             const activeBtn = document.getElementById(`btn-${tabId}`);
-            activeBtn.className = "nav-btn w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all duration-200 bg-indigo-600 text-white shadow-md shadow-indigo-600/15";
+            if (activeBtn) {
+                activeBtn.className = "nav-btn w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all duration-200 bg-indigo-600 text-white shadow-md shadow-indigo-600/15";
+            }
 
             // Set Title
             const titleMap = {
@@ -1329,7 +1295,7 @@
                                     pay.status = '已繳清';
                                     pay.paidAmount = amount;
                                 } else if (pay.paidAmount > amount) {
-                                    pay.status = '已繳清';
+                                    pay.status = 'Spacer_已繳清';
                                     pay.paidAmount = amount;
                                 }
                             }
@@ -1710,6 +1676,7 @@
             }
 
             let finalPaid = 0;
+            let currentStatus = activeModalStatusVal;
             
             if (activeModalStatusVal === '已繳清') {
                 finalPaid = finalTarget;
@@ -1719,10 +1686,10 @@
                 finalPaid = parseFloat(document.getElementById('modal-paid-amount').value) || 0;
                 
                 if (finalPaid <= 0) {
-                    activeModalStatusVal = '未繳';
+                    currentStatus = '未繳';
                     finalPaid = 0;
                 } else if (finalPaid >= finalTarget) {
-                    activeModalStatusVal = '已繳清';
+                    currentStatus = '已繳清';
                     finalPaid = finalTarget;
                 }
             }
@@ -1732,9 +1699,9 @@
             const existing = state.payments[key];
             let finalPaidAt = (existing && existing.paidAt) ? existing.paidAt : null;
 
-            if (activeModalStatusVal === '已繳清') {
+            if (currentStatus === '已繳清') {
                 // Keep prior timestamp if status was already '已繳清'
-                if (existing && existing.status.includes('已繳清') && existing.paidAt) {
+                if (existing && (existing.status === '已繳清' || existing.status.includes('已繳清')) && existing.paidAt) {
                     finalPaidAt = existing.paidAt;
                 } else {
                     // Update timestamp to current date/time
@@ -1753,7 +1720,7 @@
 
             // Save record (including the customized expected targetAmount & paidAt timestamp!)
             state.payments[key] = {
-                status: activeModalStatusVal,
+                status: currentStatus,
                 paidAmount: finalPaid,
                 targetAmount: finalTarget,
                 paidAt: finalPaidAt
