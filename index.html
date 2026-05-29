@@ -242,6 +242,11 @@
                         <polyline points="7 10 12 15 17 10"/>
                         <line x1="12" y1="15" x2="12" y2="3"/>
                     </svg>
+                ),
+                "check": (
+                    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <polyline points="20 6 9 17 4 12"/>
+                    </svg>
                 )
             };
             return icons[name] || (
@@ -457,8 +462,10 @@
             const [batchClassFilter, setBatchClassFilter] = useState(classes[0] || '');
             const [batchStudentsText, setBatchStudentsText] = useState('');
 
-            // 費用名目相關狀態
-            const [editingFee, setEditingFee] = useState(null);
+            // 費用名目相關狀態 (列內編輯暫存)
+            const [editingFeeId, setEditingFeeId] = useState(null);
+            const [editFeeName, setEditFeeName] = useState('');
+            const [editFeeAmount, setEditFeeAmount] = useState('');
             const [newFee, setNewFee] = useState({ name: '', amount: '' });
 
             // 收費登記矩陣相關狀態
@@ -538,7 +545,7 @@
                 showToast(`班級「${oldName}」已成功重新命名為「${trimmed}」，且已同步更新學生名單`);
             };
 
-            // 安全地使用自訂確認視窗來進行班級刪除 (徹底根除 iframe 封鎖問題)
+            // 安全地使用自訂確認視窗來進行班級刪除
             const handleDeleteClass = (className) => {
                 setConfirmModal({
                     title: "確認刪除班級",
@@ -568,7 +575,7 @@
                         }
 
                         setShowClassEditInput(false);
-                        setConfirmModal(null); // 關閉自訂確認視窗
+                        setConfirmModal(null);
                         showToast(`已成功刪除班級「${className}」及相關資料`);
                     }
                 });
@@ -717,11 +724,31 @@
                 showToast(`已新增費用項目「${newFee.name}」`);
             };
 
-            const handleUpdateFee = (feeId, updatedFields) => {
-                const updatedAmount = parseFloat(updatedFields.amount);
-                setFees(fees.map(f => f.id === feeId ? { ...f, name: updatedFields.name, amount: updatedAmount } : f));
-                setEditingFee(null);
-                showToast('費用項目已更新');
+            // 開啟列內編輯費用
+            const handleStartEditFee = (fee) => {
+                setEditingFeeId(fee.id);
+                setEditFeeName(fee.name);
+                setEditFeeAmount(fee.amount);
+            };
+
+            // 🟢 列內編輯：安全儲存更變
+            const handleSaveEditFee = (feeId) => {
+                const trimmedName = editFeeName.trim();
+                const parsedAmount = parseFloat(editFeeAmount);
+
+                if (!trimmedName) {
+                    showToast('費用名稱不得為空', 'error');
+                    return;
+                }
+                if (isNaN(parsedAmount) || parsedAmount < 0) {
+                    showToast('請輸入有效的金額', 'error');
+                    return;
+                }
+
+                // 更新設定資料
+                setFees(fees.map(f => f.id === feeId ? { ...f, name: trimmedName, amount: parsedAmount } : f));
+                setEditingFeeId(null);
+                showToast('費用設定已更新！');
             };
 
             // 安全地使用自訂確認視窗來刪除收費項目
@@ -767,7 +794,7 @@
                 };
             };
 
-            // 儲存繳費面板修改：當狀態為已繳清時，若原本沒有記錄時間，自動寫入當前的年月日時分
+            // 儲存繳費面板修改
             const handleSavePaymentModal = (studentId, feeId, status, customAmount, paidAmount) => {
                 let actualPaid = paidAmount;
                 let paidTime = "";
@@ -775,7 +802,6 @@
                 if (status === "已繳清") {
                     actualPaid = customAmount;
                     const originalRecord = payments[`${studentId}_${feeId}`];
-                    // 🟢 如果原本就是已繳清且有時間，則保留原時間；否則生成當前時間
                     if (originalRecord && originalRecord.status === "已繳清" && originalRecord.paidAt) {
                         paidTime = originalRecord.paidAt;
                     } else {
@@ -805,7 +831,7 @@
             };
 
 
-            // --- 數據統計分析 (儀表板) ---
+            // --- 數據統計分析 ---
             const stats = useMemo(() => {
                 let totalExpected = 0;
                 let totalReceived = 0;
@@ -1214,7 +1240,7 @@
                                         </div>
                                         <div className="w-full bg-slate-100 h-4 rounded-full overflow-hidden mb-6">
                                             <div 
-                                                className="bg-brand-500 h-full rounded-full transition-all duration-1000 ease-out"
+                                                className="bg-brand-500 h-full"
                                                 style={{ width: `${stats.progress}%` }}
                                             ></div>
                                         </div>
@@ -1602,44 +1628,66 @@
                                                         {fees.map(fee => (
                                                             <tr key={fee.id} className="hover:bg-slate-50/50 group">
                                                                 <td className="px-6 py-3.5 font-medium text-slate-800">
-                                                                    {editingFee === fee.id ? (
+                                                                    {editingFeeId === fee.id ? (
                                                                         <input 
                                                                             type="text" 
-                                                                            defaultValue={fee.name}
-                                                                            onBlur={(e) => handleUpdateFee(fee.id, { ...fee, name: e.target.value })}
-                                                                            className="w-full bg-slate-50 border border-slate-200 rounded-md px-1.5 py-0.5 animate-pulse"
+                                                                            value={editFeeName}
+                                                                            onChange={(e) => setEditFeeName(e.target.value)}
+                                                                            className="w-full bg-slate-50 border border-brand-300 rounded-xl px-2.5 py-1.5 text-sm font-semibold focus:outline-none focus:border-brand-500"
                                                                             autoFocus
                                                                         />
                                                                     ) : fee.name}
                                                                 </td>
                                                                 <td className="px-6 py-3.5 font-semibold text-slate-700">
-                                                                    {editingFee === fee.id ? (
+                                                                    {editingFeeId === fee.id ? (
                                                                         <input 
                                                                             type="number" 
-                                                                            defaultValue={fee.amount}
-                                                                            onBlur={(e) => handleUpdateFee(fee.id, { ...fee, amount: e.target.value })}
-                                                                            className="w-24 bg-slate-50 border border-slate-200 rounded-md px-1.5 py-0.5 animate-pulse"
-                                                                            autoFocus
+                                                                            value={editFeeAmount}
+                                                                            onChange={(e) => setEditFeeAmount(e.target.value)}
+                                                                            className="w-28 bg-slate-50 border border-brand-300 rounded-xl px-2.5 py-1.5 text-sm font-semibold focus:outline-none focus:border-brand-500"
                                                                         />
                                                                     ) : `$${fee.amount.toLocaleString()}`}
                                                                 </td>
                                                                 <td className="px-6 py-3.5 text-right">
-                                                                    <div className="flex items-center justify-end gap-1.5">
-                                                                        <button 
-                                                                            type="button"
-                                                                            onClick={() => setEditingFee(editingFee === fee.id ? null : fee.id)}
-                                                                            className="p-1 rounded text-slate-400 hover:text-brand-600 hover:bg-brand-50"
-                                                                        >
-                                                                            <SvgIcon name="edit" />
-                                                                        </button>
-                                                                        <button 
-                                                                            type="button"
-                                                                            onClick={() => handleDeleteFee(fee.id, fee.name)}
-                                                                            className="p-1 rounded text-slate-400 hover:text-rose-600 hover:bg-rose-50"
-                                                                        >
-                                                                            <SvgIcon name="trash-2" />
-                                                                        </button>
-                                                                    </div>
+                                                                    {editingFeeId === fee.id ? (
+                                                                        <div className="flex items-center justify-end gap-1.5">
+                                                                            <button 
+                                                                                type="button"
+                                                                                onClick={() => handleSaveEditFee(fee.id)}
+                                                                                className="p-1.5 rounded-lg text-emerald-600 hover:bg-emerald-50 bg-emerald-50/30 flex items-center justify-center"
+                                                                                title="儲存變更"
+                                                                            >
+                                                                                <SvgIcon name="check" className="w-4 h-4" />
+                                                                            </button>
+                                                                            <button 
+                                                                                type="button"
+                                                                                onClick={() => setEditingFeeId(null)}
+                                                                                className="p-1.5 rounded-lg text-slate-400 hover:bg-slate-100 flex items-center justify-center"
+                                                                                title="取消編輯"
+                                                                            >
+                                                                                <SvgIcon name="x" className="w-4 h-4" />
+                                                                            </button>
+                                                                        </div>
+                                                                    ) : (
+                                                                        <div className="flex items-center justify-end gap-1.5">
+                                                                            <button 
+                                                                                type="button"
+                                                                                onClick={() => handleStartEditFee(fee)}
+                                                                                className="p-1 rounded text-slate-400 hover:text-brand-600 hover:bg-brand-50"
+                                                                                title="編輯項目"
+                                                                            >
+                                                                                <SvgIcon name="edit" />
+                                                                            </button>
+                                                                            <button 
+                                                                                type="button"
+                                                                                onClick={() => handleDeleteFee(fee.id, fee.name)}
+                                                                                className="p-1 rounded text-slate-400 hover:text-rose-600 hover:bg-rose-50"
+                                                                                title="刪除項目"
+                                                                            >
+                                                                                <SvgIcon name="trash-2" />
+                                                                            </button>
+                                                                        </div>
+                                                                    )}
                                                                 </td>
                                                             </tr>
                                                         ))}
@@ -1725,7 +1773,7 @@
                                                                             <span className="text-[10px] opacity-80 mt-0.5">
                                                                                 {p.status === "部分繳納" ? `$${p.paidAmount}/$${p.customAmount}` : `$${p.customAmount}`}
                                                                             </span>
-                                                                            {/* 🟢 已繳清狀態：在格子下方直接註記當下日期時間 */}
+                                                                            {/* 已繳清狀態：在格子下方直接註記當下日期時間 */}
                                                                             {p.status === "已繳清" && p.paidAt && (
                                                                                 <span className="text-[9px] font-normal text-emerald-700/80 mt-1 whitespace-nowrap bg-emerald-100/40 px-1 rounded">
                                                                                     {p.paidAt}
@@ -1904,7 +1952,7 @@
                                     <textarea 
                                         rows="10" 
                                         value={batchStudentsText}
-                                        onChange={(e) => setBatchStudentsText(e.target.value)}
+                                        onChange={(e) => setEditFeeAmount(e.target.value)}
                                         className="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 text-sm focus:outline-none focus:border-brand-500 font-mono text-slate-700"
                                     ></textarea>
                                 </div>
@@ -1945,7 +1993,7 @@
                         );
                     })()}
 
-                    {/* 安全自訂確認視窗 (完全擺脫原生 confirm 被封鎖的問題) */}
+                    {/* 安全自訂確認視窗 */}
                     <CustomConfirmModal 
                         isOpen={!!confirmModal}
                         title={confirmModal?.title || ""}
