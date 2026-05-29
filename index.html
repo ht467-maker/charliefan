@@ -393,7 +393,7 @@
             </section>
 
             <!-- TAB 5: Backup & Export -->
-            <section id="tab-backup" class="hidden space-y-6">
+            <section id="tab-backup" class="hidden space-y-6 animate-in fade-in duration-200">
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <!-- Export Card -->
                     <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 flex flex-col justify-between">
@@ -438,19 +438,34 @@
                             </div>
                         </div>
                     </div>
-                </div>
 
-                <!-- PWA Hosting details -->
-                <div class="bg-indigo-950 text-slate-200 p-6 rounded-2xl border border-indigo-900 flex flex-col md:flex-row items-center justify-between gap-6">
-                    <div class="space-y-1">
-                        <h5 class="font-bold text-white flex items-center gap-2 text-base">
-                            <i data-lucide="smartphone" class="text-indigo-400"></i> PWA 移動式應用程式安裝
-                        </h5>
-                        <p class="text-xs text-indigo-200/80">本網頁已內置 App 聲明書。如果您將本網頁託管在任何 HTTPS 網站上，即可在手機、iPad 或電腦桌面上直接安裝為免瀏覽器的獨立 App 離線使用！</p>
+                    <!-- PWA Hosting details -->
+                    <div class="bg-indigo-950 text-slate-200 p-6 rounded-2xl border border-indigo-900 flex flex-col justify-between md:col-span-2">
+                        <div class="space-y-1 mb-4">
+                            <h5 class="font-bold text-white flex items-center gap-2 text-base">
+                                <i data-lucide="smartphone" class="text-indigo-400"></i> PWA 移動式應用程式安裝
+                            </h5>
+                            <p class="text-xs text-indigo-200/80">本網頁已內置 App 聲明書。如果您將本網頁託管在任何 HTTPS 網站上，即可在手機、iPad 或電腦桌面上直接安裝為免瀏覽器的獨立 App 離線使用！</p>
+                        </div>
+                        <button onclick="downloadPWABackup()" class="w-fit bg-white hover:bg-indigo-50 text-indigo-950 font-bold text-xs py-2.5 px-4 rounded-xl whitespace-nowrap transition flex items-center gap-2">
+                            <i data-lucide="package" class="w-4 h-4"></i> 下載自託管 PWA 部署包
+                        </button>
                     </div>
-                    <button onclick="downloadPWABackup()" class="bg-white hover:bg-indigo-50 text-indigo-950 font-bold text-xs py-2.5 px-4 rounded-xl whitespace-nowrap transition flex items-center gap-2">
-                        <i data-lucide="package" class="w-4 h-4"></i> 下載自託管 PWA 部署包
-                    </button>
+
+                    <!-- NEW: Danger Zone (Reset Local Storage and wipe data) -->
+                    <div class="bg-rose-50 border border-rose-200 p-6 rounded-2xl flex flex-col justify-between md:col-span-2 animate-in fade-in duration-200">
+                        <div class="mb-4">
+                            <h5 class="font-bold text-rose-900 flex items-center gap-2 text-base">
+                                <i data-lucide="alert-triangle" class="text-rose-600"></i> 危險區域：清除與重置系統
+                            </h5>
+                            <p class="text-xs text-rose-700/85 mt-1">
+                                這將會永久清除瀏覽器本地快取中所儲存的<strong>所有班級、學生、費用名目設定以及全部收交費紀錄</strong>。此動作無法還原，通常在您想要大掃除或系統計算混亂時使用。
+                            </p>
+                        </div>
+                        <button onclick="purgeSystemData()" class="w-fit bg-rose-600 hover:bg-rose-700 text-white font-bold text-xs py-2.5 px-4 rounded-xl transition flex items-center gap-2 shadow-md shadow-rose-600/10">
+                            <i data-lucide="trash-2" class="w-4 h-4"></i> 清空資料並還原初始狀態
+                        </button>
+                    </div>
                 </div>
             </section>
 
@@ -1295,7 +1310,7 @@
                                     pay.status = '已繳清';
                                     pay.paidAmount = amount;
                                 } else if (pay.paidAmount > amount) {
-                                    pay.status = 'Spacer_已繳清';
+                                    pay.status = '已繳清';
                                     pay.paidAmount = amount;
                                 }
                             }
@@ -1699,7 +1714,7 @@
             const existing = state.payments[key];
             let finalPaidAt = (existing && existing.paidAt) ? existing.paidAt : null;
 
-            if (currentStatus === '已繳清') {
+            if (currentStatus === 'Spacer_已繳清' || currentStatus === '已繳清') {
                 // Keep prior timestamp if status was already '已繳清'
                 if (existing && (existing.status === '已繳清' || existing.status.includes('已繳清')) && existing.paidAt) {
                     finalPaidAt = existing.paidAt;
@@ -1833,9 +1848,48 @@
             }
         }
 
-        // CSV parser to import/merge students & payments (Now handles targetAmount and paidAt import!)
+        // Dynamic status terminology alignment (Supports custom terms like "已收", "Y", "已付")
+        function normalizeImportStatus(status) {
+            status = status.trim();
+            if (status === '已繳清' || status === '已付清' || status === '已收' || status === '已繳' || status === '已付' || status === 'Y' || status === 'y' || status === 'yes' || status === '1') {
+                return '已繳清';
+            }
+            if (status === '部分繳納' || status === '部分' || status === '部分繳' || status === '部分付' || status === '部分收') {
+                return '部分繳納';
+            }
+            return '未繳'; // Default fallback
+        }
+
+        // Safe CSV parser that respects double-quotes and prevents column index shifting
+        function parseCSVLine(line) {
+            const result = [];
+            let current = '';
+            let inQuotes = false;
+            for (let i = 0; i < line.length; i++) {
+                const char = line[i];
+                if (char === '"') {
+                    inQuotes = !inQuotes;
+                } else if (char === ',' && !inQuotes) {
+                    result.push(cleanCSVValue(current));
+                    current = '';
+                } else {
+                    current += char;
+                }
+            }
+            result.push(cleanCSVValue(current));
+            return result;
+        }
+
+        function cleanCSVValue(val) {
+            val = val.trim();
+            if (val.startsWith('"') && val.endsWith('"')) {
+                val = val.substring(1, val.length - 1);
+            }
+            return val.trim();
+        }
+
+        // CSV parser to import/merge students & payments (Wipe-resistant and NaN protected!)
         function parseCSVImport(text) {
-            // Remove BOM if present
             if (text.startsWith('\uFEFF')) {
                 text = text.substring(1);
             }
@@ -1846,8 +1900,8 @@
                 return;
             }
 
-            // Parse Headers to find dynamically mapped fee columns
-            const headers = lines[0].split(',');
+            // Safe parsing headers using the custom line parser
+            const headers = parseCSVLine(lines[0]);
             if (headers[0] !== "班級" || headers[1] !== "座號" || headers[2] !== "姓名") {
                 showNotification("CSV 表頭不符合規定格式，請使用系統提供的範本", "error");
                 return;
@@ -1894,9 +1948,9 @@
             let addedStudents = 0;
             let updatedPayments = 0;
 
-            // Process Rows
+            // Process Rows using our high-strength safe parser
             for (let r = 1; r < lines.length; r++) {
-                const cols = lines[r].split(',');
+                const cols = parseCSVLine(lines[r]);
                 if (cols.length < 3) continue;
 
                 const cls = cols[0];
@@ -1916,23 +1970,37 @@
                     addedStudents++;
                 }
 
-                // Process fee statuses and individual targetAmounts & paidAt timestamps
+                // Process fee statuses and individual targetAmounts & paidAt timestamps with high safety guards
                 Object.keys(feeColIndex).forEach(feeName => {
                     const fee = state.feeItems.find(f => f.name === feeName);
                     if (!fee) return;
 
                     const cfg = feeColIndex[feeName];
-                    const targetAmt = parseFloat(cols[cfg.targetIndex]) ?? fee.amount;
-                    const status = cols[cfg.statusIndex] || "未繳";
-                    const amtPaid = parseFloat(cols[cfg.amountIndex]) || 0;
+                    
+                    // Safe parsing for target Amount
+                    let targetAmt = parseFloat(cols[cfg.targetIndex]);
+                    if (isNaN(targetAmt)) {
+                        targetAmt = fee.amount;
+                    }
+
+                    // Safe parsing for payment status (supports different terminologies!)
+                    const rawStatus = cols[cfg.statusIndex] || "未繳";
+                    const status = normalizeImportStatus(rawStatus);
+
+                    // Safe parsing for already paid amount
+                    let amtPaid = parseFloat(cols[cfg.amountIndex]);
+                    if (isNaN(amtPaid)) {
+                        amtPaid = 0;
+                    }
+
                     const paidAt = cfg.paidAtIndex !== undefined ? (cols[cfg.paidAtIndex] || null) : null;
 
                     const pKey = `${student.id}_${fee.id}`;
                     state.payments[pKey] = {
                         status: status,
-                        paidAmount: (status === '已繳清' || status.includes('已繳清')) ? targetAmt : amtPaid,
+                        paidAmount: status === '已繳清' ? targetAmt : amtPaid,
                         targetAmount: targetAmt,
-                        paidAt: (status === '已繳清' || status.includes('已繳清')) ? paidAt : null
+                        paidAt: status === '已繳清' ? paidAt : null
                     };
                     updatedPayments++;
                 });
@@ -1940,7 +2008,7 @@
 
             saveToLocalStorage();
             renderAll();
-            showNotification(`CSV 解析完成！新增學生: ${addedStudents} 人，更新與客製化登記: ${updatedPayments} 筆`);
+            showNotification(`CSV 解析並完成智慧字詞對齊！新增學生: ${addedStudents} 人，更新與客製化登記: ${updatedPayments} 筆`);
         }
 
         // CSV Template Generator (Upgraded to include _繳清時間 & _應繳總額!)
@@ -1953,7 +2021,7 @@
             } else {
                 csv += ",示範班費_應繳總額,示範班費_繳費狀態,示範班費_已付金額,示範班費_繳清時間";
             }
-            csv += "\n三年二班,01,陳小明,500,未繳,0,\n三年二班,02,張大衛,300,已繳清,300,2026/05/29 13:50";
+            csv += "\n三年二班,01,陳小明,500,未繳,0,\n三年二班,02,張大衛,300,已收,300,2026/05/29 13:50";
 
             const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
             const url = URL.createObjectURL(blob);
@@ -1964,7 +2032,23 @@
             document.body.appendChild(link);
             link.click();
             document.body.removeChild(link);
-            showNotification("範本下載完成，可用 Excel 編輯");
+            showNotification("範本下載完成，已支援「已收/已繳/已付」等多種中文自動辨識！");
+        }
+
+        // Safe Reset Tool to clear old dirty states
+        function purgeSystemData() {
+            if (confirm("🚨 警告警告：此動作將會「永久抹除」您目前瀏覽器儲存的所有學生資料、班級名冊、收費項目以及全部的繳費與時間歷史登記，並且「完全無法還原」！確定要清空嗎？")) {
+                localStorage.removeItem('class_fee_manager_state');
+                state = {
+                    students: [],
+                    feeItems: [],
+                    payments: {}
+                };
+                saveToLocalStorage();
+                renderAll();
+                showNotification("系統資料庫已徹底重置乾淨！", "warning");
+                switchTab('students'); // Guide them to Student tab to begin fresh
+            }
         }
 
         // PWA Self-Hosting Builder
@@ -2030,12 +2114,9 @@ self.addEventListener('fetch', e => {
             showNotification("PWA 部署指南與代碼已成功下載！");
         }
 
-        // ==========================================
         // SERVICE WORKER IN-PAGE REGISTER
-        // ==========================================
         function registerMockServiceWorker() {
             if ('serviceWorker' in navigator) {
-                // Register a live data service worker using inline Blobs so it works immediately if served over HTTPS
                 const swCode = `const CACHE_NAME = 'fee-pwa-cache-v1';
                     self.addEventListener('install', e => {
                         self.skipWaiting();
@@ -2044,7 +2125,6 @@ self.addEventListener('fetch', e => {
                         e.waitUntil(clients.claim());
                     });
                     self.addEventListener('fetch', e => {
-                        // Pass-through strategy
                         e.respondWith(fetch(e.request).catch(() => caches.match(e.request)));
                     });`;
                 
