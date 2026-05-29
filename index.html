@@ -891,11 +891,13 @@
                     state.feeItems.forEach(f => {
                         const key = `${s.id}_${f.id}`;
                         const pay = state.payments[key];
-                        if (!pay || pay.status === '未繳' || pay.status.includes('未繳')) {
+                        const payStatus = (pay && typeof pay.status === 'string') ? pay.status : '未繳';
+
+                        if (payStatus === '未繳' || payStatus.includes('未繳')) {
                             unpaidCount++;
-                        } else if (pay.status === '已繳清' || pay.status.includes('已繳清')) {
+                        } else if (payStatus === '已繳清' || payStatus.includes('已繳清')) {
                             paidCount++;
-                        } else if (pay.status === '部分繳納' || pay.status.includes('部分繳納')) {
+                        } else if (payStatus === '部分繳納' || payStatus.includes('部分繳納')) {
                             partialCount++;
                         }
                     });
@@ -945,12 +947,13 @@
                     const key = `${s.id}_${fee.id}`;
                     const pay = state.payments[key];
                     const expectedAmount = (pay && typeof pay.targetAmount !== 'undefined' && !isNaN(parseFloat(pay.targetAmount))) ? parseFloat(pay.targetAmount) : parseFloat(fee.amount);
+                    const payStatus = (pay && typeof pay.status === 'string') ? pay.status : '未繳';
                     
                     feeExpect += expectedAmount;
                     if (pay) {
                         feeCollected += parseFloat(pay.paidAmount) || 0;
-                        if (pay.status === '已繳清' || pay.status.includes('已繳清')) feePaidStudents++;
-                        if (pay.status === '部分繳納' || pay.status.includes('部分繳納')) feePartialStudents++;
+                        if (payStatus === '已繳清' || payStatus.includes('已繳清')) feePaidStudents++;
+                        if (payStatus === '部分繳納' || payStatus.includes('部分繳納')) feePartialStudents++;
                     }
                 });
 
@@ -1302,11 +1305,12 @@
                     state.students.forEach(s => {
                         const pKey = `${s.id}_${editId}`;
                         const pay = state.payments[pKey];
+                        const payStatus = (pay && typeof pay.status === 'string') ? pay.status : '未繳';
                         if (pay) {
                             // If the payment had default amount, update target and check logic
                             if (typeof pay.targetAmount === 'undefined' || pay.targetAmount === oldAmount) {
                                 pay.targetAmount = amount;
-                                if (pay.status === '已繳清' || pay.status.includes('已繳清')) {
+                                if (payStatus === '已繳清' || payStatus.includes('已繳清')) {
                                     pay.status = '已繳清';
                                     pay.paidAmount = amount;
                                 } else if (pay.paidAmount > amount) {
@@ -1412,8 +1416,8 @@
                     return state.feeItems.some(f => {
                         const key = `${s.id}_${f.id}`;
                         const pay = state.payments[key];
-                        const currentStatus = pay ? pay.status : '未繳';
-                        return currentStatus.includes(filterStatus);
+                        const payStatus = (pay && typeof pay.status === 'string') ? pay.status : '未繳';
+                        return payStatus.includes(filterStatus);
                     });
                 });
             }
@@ -1443,12 +1447,13 @@
                     const key = `${s.id}_${fee.id}`;
                     const pay = state.payments[key];
                     const expectedAmount = (pay && typeof pay.targetAmount !== 'undefined' && !isNaN(parseFloat(pay.targetAmount))) ? parseFloat(pay.targetAmount) : parseFloat(fee.amount);
+                    const payStatus = (pay && typeof pay.status === 'string') ? pay.status : '未繳';
                     
                     totalExpect += expectedAmount;
                     if (pay) {
                         collected += parseFloat(pay.paidAmount) || 0;
-                        if (pay.status === '已繳清' || pay.status.includes('已繳清')) paidCount++;
-                        else if (pay.status === '部分繳納' || pay.status.includes('部分繳納')) partialCount++;
+                        if (payStatus === '已繳清' || payStatus.includes('已繳清')) paidCount++;
+                        else if (payStatus === '部分繳納' || payStatus.includes('部分繳納')) partialCount++;
                         else unpaidCount++;
                     } else {
                         unpaidCount++;
@@ -1512,6 +1517,7 @@
                     const key = `${s.id}_${fee.id}`;
                     const pay = state.payments[key] || { status: '未繳', paidAmount: 0, targetAmount: fee.amount, paidAt: null };
                     const expectedAmount = typeof pay.targetAmount !== 'undefined' ? parseFloat(pay.targetAmount) : parseFloat(fee.amount);
+                    const payStatus = (pay && typeof pay.status === 'string') ? pay.status : '未繳';
                     
                     const td = document.createElement('td');
                     td.className = "py-2.5 px-3 border-l border-slate-100 text-center align-middle";
@@ -1519,7 +1525,7 @@
                     let badgeClass = '';
                     let label = '';
 
-                    if (pay.status === '已繳清' || pay.status.includes('已繳清')) {
+                    if (payStatus === '已繳清' || payStatus.includes('已繳清')) {
                         badgeClass = 'bg-emerald-500/10 text-emerald-600 hover:bg-emerald-500/20';
                         // Check if student paid a custom amount
                         const customFlag = expectedAmount !== fee.amount ? ` <span class="text-[9px] bg-emerald-200/50 px-1 py-0.5 rounded text-emerald-800">特 $${expectedAmount}</span>` : '';
@@ -1532,7 +1538,7 @@
                                 <span class="flex items-center gap-1"><i data-lucide="check" class="w-3.5 h-3.5"></i> 已付清${customFlag}</span>
                                 ${timeStr}
                             </span>`;
-                    } else if (pay.status === '部分繳納' || pay.status.includes('部分繳納')) {
+                    } else if (payStatus === '部分繳納' || payStatus.includes('部分繳納')) {
                         badgeClass = 'bg-amber-500/10 text-amber-600 hover:bg-amber-500/20';
                         label = `<span class="flex items-center justify-center gap-1 text-[11px]"><i data-lucide="alert-circle" class="w-3.5 h-3.5"></i> $${pay.paidAmount} / $${expectedAmount}</span>`;
                     } else {
@@ -1573,10 +1579,11 @@
             activeModalFeeId = feeId;
 
             const record = state.payments[`${studentId}_${feeId}`] || { status: '未繳', paidAmount: 0, targetAmount: fee.amount, paidAt: null };
+            const recordStatus = (record && typeof record.status === 'string') ? record.status : '未繳';
             
-            // Normalize status to clean values on open
-            if (record.status.includes('已繳清')) activeModalStatusVal = '已繳清';
-            else if (record.status.includes('部分繳納')) activeModalStatusVal = '部分繳納';
+            // Normalize status to clean values on open (Using type-safe checks)
+            if (recordStatus.includes('已繳清')) activeModalStatusVal = '已繳清';
+            else if (recordStatus.includes('部分繳納')) activeModalStatusVal = '部分繳納';
             else activeModalStatusVal = '未繳';
 
             // Header UI Info
@@ -1658,12 +1665,14 @@
                 amtInput.value = 0;
             }
 
-            // Update timestamp details preview inside dialog
+            // Update timestamp details preview inside dialog (Using safe string-checking)
             const key = `${activeModalStudentId}_${activeModalFeeId}`;
             const record = state.payments[key];
+            const recordStatus = (record && typeof record.status === 'string') ? record.status : '未繳';
+
             if (activeModalStatusVal === '已繳清') {
                 timeBox.classList.remove('hidden');
-                if (record && record.status.includes('已繳清') && record.paidAt) {
+                if (record && recordStatus.includes('已繳清') && record.paidAt) {
                     timeVal.innerHTML = `<span class="flex items-center gap-1 text-emerald-700"><i data-lucide="clock" class="w-3.5 h-3.5"></i> ${record.paidAt}</span>`;
                 } else {
                     timeVal.innerHTML = `<span class="text-indigo-600 italic">儲存後自動記錄當前時間</span>`;
@@ -1704,19 +1713,21 @@
                     currentStatus = '未繳';
                     finalPaid = 0;
                 } else if (finalPaid >= finalTarget) {
+                    currentStatus = '合格_已繳清';
                     currentStatus = '已繳清';
                     finalPaid = finalTarget;
                 }
             }
 
-            // Dynamic date & time recording logic on confirm
+            // Dynamic date & time recording logic on confirm (Type-Safe string check)
             const key = `${activeModalStudentId}_${activeModalFeeId}`;
             const existing = state.payments[key];
+            const existingStatus = (existing && typeof existing.status === 'string') ? existing.status : '未繳';
             let finalPaidAt = (existing && existing.paidAt) ? existing.paidAt : null;
 
-            if (currentStatus === 'Spacer_已繳清' || currentStatus === '已繳清') {
+            if (currentStatus === '已繳清') {
                 // Keep prior timestamp if status was already '已繳清'
-                if (existing && (existing.status === '已繳清' || existing.status.includes('已繳清')) && existing.paidAt) {
+                if (existing && (existingStatus === '已繳清' || existingStatus.includes('已繳清')) && existing.paidAt) {
                     finalPaidAt = existing.paidAt;
                 } else {
                     // Update timestamp to current date/time
@@ -1850,6 +1861,7 @@
 
         // Dynamic status terminology alignment (Supports custom terms like "已收", "Y", "已付")
         function normalizeImportStatus(status) {
+            if (!status || typeof status !== 'string') return '未繳';
             status = status.trim();
             if (status === '已繳清' || status === '已付清' || status === '已收' || status === '已繳' || status === '已付' || status === 'Y' || status === 'y' || status === 'yes' || status === '1') {
                 return '已繳清';
